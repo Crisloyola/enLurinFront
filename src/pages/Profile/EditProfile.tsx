@@ -24,7 +24,7 @@ export default function EditProfile({ isNew = false }: Props) {
   const [error, setError]     = useState('')
   const navigate = useNavigate()
 
-  const { data: existing, isLoading } = useFetch(
+  const { data: existing, loading: isLoading } = useFetch(
     () => isNew ? Promise.resolve(null) : profileService.getMyProfile()
   )
 

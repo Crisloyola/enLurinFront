@@ -13,7 +13,7 @@ export interface Profile {
   logoUrl?:     string
   rating?:      number
   reviewCount?: number
-  status:       'PENDING' | 'ACTIVE' | 'INACTIVE'
+  status:       'ACTIVE' | 'INACTIVE' | 'PENDING'
   featured?:    boolean
   createdAt:    string
 }

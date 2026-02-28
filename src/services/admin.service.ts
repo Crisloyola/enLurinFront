@@ -10,9 +10,9 @@ export interface AppUser {
 }
 
 export const adminService = {
-  // GET /profiles/admin/pending  (perfiles pendientes)
+  // GET /admin/profiles?status=PENDING  (perfiles pendientes)
   getPending: async (): Promise<Profile[]> => {
-    const { data } = await api.get('/profiles/admin/pending')
+    const { data } = await api.get('/admin/profiles', { params: { status: 'PENDING' } })
     return data
   },
 
@@ -30,19 +30,19 @@ export const adminService = {
 
   // PUT /admin/profiles/{id}/approve  → pone ACTIVE
   approve: async (id: number): Promise<Profile> => {
-    const { data } = await api.put(`/admin/profiles/${id}/approve`)
+    const { data } = await api.put(`/admin/profiles/${id}/approve`, {})
     return data
   },
 
   // PUT /admin/profiles/{id}/suspend  → pone INACTIVE
   suspend: async (id: number): Promise<Profile> => {
-    const { data } = await api.put(`/admin/profiles/${id}/suspend`)
+    const { data } = await api.put(`/admin/profiles/${id}/suspend`, {})
     return data
   },
 
   // PUT /admin/profiles/{id}/featured
   setFeatured: async (id: number): Promise<Profile> => {
-    const { data } = await api.put(`/admin/profiles/${id}/featured`)
+    const { data } = await api.put(`/admin/profiles/${id}/featured`, {})
     return data
   },
 

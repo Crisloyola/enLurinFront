@@ -14,10 +14,10 @@ function roleLabel(role: any): string {
 }
 
 export default function Dashboard() {
-  const { data: pending,   isLoading: l1 } = useFetch<Profile[]>(() => adminService.getPending())
-  const { data: approved,  isLoading: l2 } = useFetch<Profile[]>(() => adminService.getAllProfiles())
-  const { data: suspended, isLoading: l3 } = useFetch<Profile[]>(() => adminService.getSuspended())
-  const { data: users,     isLoading: l4, refetch: refetchUsers } = useFetch<AppUser[]>(() => adminService.getUsers())
+  const { data: pending,   loading: l1 } = useFetch<Profile[]>(() => adminService.getPending())
+  const { data: approved,  loading: l2 } = useFetch<Profile[]>(() => adminService.getAllProfiles())
+  const { data: suspended, loading: l3 } = useFetch<Profile[]>(() => adminService.getSuspended())
+  const { data: users,     loading: l4, refetch: refetchUsers } = useFetch<AppUser[]>(() => adminService.getUsers())
   const [processing, setProcessing] = useState<number | null>(null)
 
   const handleFeatured = async (id: number) => {
@@ -81,7 +81,6 @@ export default function Dashboard() {
                 <span className="font-semibold text-sm text-gray-900 truncate">{p.businessName}</span>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full
                   ${p.status === 'ACTIVE'  ? 'bg-green-100 text-green-700'  : ''}
-                  ${p.status === 'PENDING'   ? 'bg-yellow-100 text-yellow-700': ''}
                   ${p.status === 'PENDING'   ? 'bg-yellow-100 text-yellow-700': ''}
                   ${p.status === 'INACTIVE' ? 'bg-red-100 text-red-600'      : ''}`}>
                   {p.status}

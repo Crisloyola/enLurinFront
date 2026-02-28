@@ -6,11 +6,12 @@ import Loader from '../../components/common/Loader'
 import { Check, X, MapPin, Phone } from 'lucide-react'
 
 export default function ProfilesPending() {
-  const { data: profiles, isLoading, refetch } = useFetch<Profile[]>(() => adminService.getPending())
+  const { data: profiles, loading: isLoading, refetch } = useFetch<Profile[]>(() => adminService.getPending())
   const [processing, setProcessing] = useState<number | null>(null)
   const [errors, setErrors]         = useState<Record<number, string>>({})
 
   const handleApprove = async (id: number) => {
+    console.log('aprobar id', id)
     setProcessing(id)
     setErrors(prev => ({ ...prev, [id]: '' }))
     try {
