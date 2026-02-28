@@ -29,9 +29,14 @@ export interface ProfileForm {
 }
 
 export const profileService = {
-  // GET /profiles/public
-  getPublic: async (): Promise<Profile[]> => {
+  // GET /profiles/public → todos los perfiles activos
+  getAllActive: async (): Promise<Profile[]> => {
     const { data } = await api.get('/profiles/public')
+    return data
+  },
+  // GET /profiles/public → perfiles públicos (con opción de filtros)
+  getPublic: async (params?: { district?: string; category?: string; q?: string }): Promise<Profile[]> => {
+    const { data } = await api.get('/profiles/public', { params })
     return data
   },
   // GET /profiles/public/search?q=&category=&district=

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Search, MapPin, Star, Phone } from 'lucide-react'
 import { profileService, type Profile } from '../../services/profile.service'
+import { useAuth } from '../../hooks/useAuth'
 
 const GRADIENTS: Record<string, string> = {
   'Restaurantes':         'from-orange-400 to-red-500',
@@ -83,9 +84,15 @@ function Hero() {
 
 // ── Profile Card ──────────────────────────────────────────────────────────
 function ProfileCard({ p }: { p: Profile }) {
+  const { user } = useAuth()
   const gradient = GRADIENTS[p.category] ?? 'from-orange-400 to-orange-600'
+  const isAdmin = user?.role === 'ADMIN'
+  const href = isAdmin ? '/admin' : `/perfil/${p.slug}`
+
+  console.log('user role:', user?.role, 'isAdmin:', isAdmin)
+
   return (
-    <Link to={`/perfil/${p.slug}`}
+    <Link to={href}
           className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden group block">
       <div className={`relative h-36 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
         {p.logoUrl
@@ -124,9 +131,15 @@ function FeaturedSection() {
   const [activeTab, setActiveTab] = useState('Todos')
 
   useEffect(() => {
-    profileService.getPublic()
-      .then(setProfiles)
-      .catch(() => setProfiles([]))
+    profileService.getAllActive()
+      .then(data => {
+        console.log('perfiles activos:', data)
+        setProfiles(data)
+      })
+      .catch(err => {
+        console.error('error al cargar perfiles activos:', err)
+        setProfiles([])
+      })
       .finally(() => setLoading(false))
   }, [])
 
