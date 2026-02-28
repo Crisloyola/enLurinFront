@@ -6,7 +6,7 @@ import Loader from '../../components/common/Loader'
 
 export default function PublicProfile() {
   const { slug } = useParams<{ slug: string }>()
-  const { data: p, isLoading, error } = useFetch<Profile>(
+  const { data: p, loading: isLoading, error } = useFetch<Profile>(
     () => profileService.getBySlug(slug!), [slug]
   )
 
@@ -61,17 +61,24 @@ export default function PublicProfile() {
                 </div>
               )}
             </div>
-            <a href={`tel:${p.phone}`}
-               className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-full transition-colors shrink-0">
-              <Phone size={16} /> Llamar ahora
-            </a>
+            {p.phone ? (
+              <a href={`tel:${p.phone}`}
+                 className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-full transition-colors shrink-0">
+                <Phone size={16} /> Llamar ahora
+              </a>
+            ) : null}
           </div>
 
           <p className="text-gray-600 text-sm leading-relaxed mb-6">{p.description}</p>
 
           <div className="grid sm:grid-cols-2 gap-3">
-            <InfoRow icon={<MapPin size={15}/>} text={`${p.address}${p.district ? ` — ${p.district}` : ''}`} />
-            <InfoRow icon={<Phone  size={15}/>} text={p.phone} />
+            <InfoRow icon={<MapPin size={15}/>} text={(() => {
+              const parts: string[] = []
+              if (p.address) parts.push(p.address)
+              if (p.district) parts.push(p.district)
+              return parts.join(' — ') || 'Dirección no especificada'
+            })()} />
+            <InfoRow icon={<Phone  size={15}/>} text={p.phone || 'No disponible'} />
             {p.website && <InfoRow icon={<Globe size={15}/>} text={p.website} />}
             <InfoRow icon={<Clock  size={15}/>} text="Contáctanos para conocer horarios" />
           </div>

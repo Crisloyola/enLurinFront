@@ -7,6 +7,8 @@ export default function Header() {
   const [menuOpen, setMenuOpen]     = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const { isAuth, user, logout } = useAuth()
+  const normalizedRole = String(user?.role ?? '').toUpperCase().replace(/^ROLE_/, '')
+  const isAdmin = normalizedRole === 'ADMIN'
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `text-sm font-medium transition-colors ${isActive ? 'text-orange-500 font-semibold' : 'text-gray-600 hover:text-orange-500'}`
@@ -39,11 +41,11 @@ export default function Header() {
                 </button>
                 {userMenuOpen && (
                   <div className="absolute right-0 top-11 bg-white border border-gray-100 rounded-2xl shadow-xl py-1.5 w-44 z-50">
-                    <Link to="/mi-perfil"
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                          onClick={() => setUserMenuOpen(false)}>
-                      <User size={15} /> Mi Perfil
-                    </Link>
+                    <Link to={isAdmin ? '/admin' : '/mi-perfil'}
+                              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              onClick={() => setUserMenuOpen(false)}>
+                          <User size={15} /> Mi Perfil
+                        </Link>
                     <hr className="my-1 border-gray-100" />
                     <button onClick={() => { logout(); setUserMenuOpen(false) }}
                             className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 w-full transition-colors">

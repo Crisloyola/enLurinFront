@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Edit, Star, MapPin, Phone, Globe, Clock, Trash2 } from 'lucide-react'
+import { Edit, Star, MapPin, Phone, Globe } from 'lucide-react'
 import { profileService, type Profile } from '../../services/profile.service'
 import { useFetch } from '../../hooks/useFetch'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,21 +7,23 @@ import Loader from '../../components/common/Loader'
 
 export default function MyProfile() {
   const { user } = useAuth()
-  const { data: profile, isLoading, error } = useFetch<Profile>(() => profileService.getMyProfile())
+  const { data: profile, loading, error } = useFetch<Profile>(
+    () => profileService.getMyProfile()
+  )
 
-  if (isLoading) return <Loader text="Cargando tu perfil..." />
+  if (loading) return <Loader text="Cargando tu perfil..." />
 
-  const statusColor = {
-    APPROVED:  'bg-green-100 text-green-700',
-    PENDING:   'bg-yellow-100 text-yellow-700',
-    SUSPENDED: 'bg-red-100 text-red-600',
+  const statusColor: Record<string, string> = {
+    ACTIVE:   'bg-green-100 text-green-700',
+    PENDING:  'bg-yellow-100 text-yellow-700',
+    INACTIVE: 'bg-red-100 text-red-600',
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <h1 className="font-extrabold text-2xl text-gray-900 mb-6">Mi Perfil</h1>
 
-      {/* User info */}
+      {/* Info del usuario */}
       <div className="bg-white rounded-2xl shadow-sm p-5 mb-5 flex items-center gap-4">
         <div className="w-14 h-14 rounded-2xl bg-orange-500 flex items-center justify-center text-white text-xl font-bold">
           {user?.name?.charAt(0).toUpperCase()}
@@ -30,50 +32,86 @@ export default function MyProfile() {
           <p className="font-bold text-gray-900">{user?.name}</p>
           <p className="text-sm text-gray-500">{user?.email}</p>
         </div>
-        <span className="text-xs font-bold bg-orange-100 text-orange-700 px-3 py-1 rounded-full">{user?.role}</span>
+        <span className="text-xs font-bold bg-orange-100 text-orange-700 px-3 py-1 rounded-full">
+          {user?.role}
+        </span>
       </div>
 
-      {/* Business profile */}
-      {error ? (
+      {/* Perfil del negocio */}
+      {error || !profile ? (
         <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
           <p className="text-5xl mb-4">🏪</p>
-          <h3 className="font-bold text-lg text-gray-900 mb-2">Aún no tienes un perfil de negocio</h3>
-          <p className="text-gray-500 text-sm mb-6">Publica tu servicio y llega a clientes en Lurín</p>
-          <Link to="/publicar"
-                className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-full transition-colors">
+          <h3 className="font-bold text-lg text-gray-900 mb-2">
+            Aún no tienes un perfil de negocio
+          </h3>
+          <p className="text-gray-500 text-sm mb-6">
+            Publica tu servicio y llega a clientes en Lurín
+          </p>
+          <Link
+            to="/publicar"
+            className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-full transition-colors"
+          >
             Publicar mi servicio
           </Link>
         </div>
-      ) : profile ? (
+      ) : (
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-start justify-between mb-4 gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusColor[profile.status]}`}>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusColor[profile.status] ?? 'bg-gray-100 text-gray-600'}`}>
                   {profile.status}
                 </span>
                 {profile.featured && (
-                  <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">⭐ Destacado</span>
+                  <span className="text-xs font-bold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">
+                    ⭐ Destacado
+                  </span>
                 )}
               </div>
-              <h2 className="font-extrabold text-xl text-gray-900 truncate">{profile.businessName}</h2>
-              <p className="text-orange-600 text-sm font-semibold">{profile.category} — {profile.district}</p>
+              <h2 className="font-extrabold text-xl text-gray-900 truncate">
+                {profile.businessName}
+              </h2>
+              <p className="text-orange-600 text-sm font-semibold">
+                {profile.category ?? 'Sin categoría'} — {profile.district ?? 'Sin distrito'}
+              </p>
             </div>
             <div className="flex gap-2 shrink-0">
-              <Link to="/mi-perfil/editar"
-                    className="inline-flex items-center gap-1.5 border-2 border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white font-semibold text-sm px-3 py-2 rounded-full transition-all">
+              <Link
+                to="/mi-perfil/editar"
+                className="inline-flex items-center gap-1.5 border-2 border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white font-semibold text-sm px-3 py-2 rounded-full transition-all"
+              >
                 <Edit size={14} /> Editar
               </Link>
             </div>
           </div>
 
-          <p className="text-gray-600 text-sm leading-relaxed mb-5">{profile.description}</p>
+          {/* Descripción */}
+          {profile.description && (
+            <p className="text-gray-600 text-sm leading-relaxed mb-5">
+              {profile.description}
+            </p>
+          )}
 
+          {/* Datos de contacto */}
           <div className="grid sm:grid-cols-2 gap-3 mb-5">
-            <InfoRow icon={<MapPin size={14}/>} text={`${profile.address} — ${profile.district}`} />
-            <InfoRow icon={<Phone  size={14}/>} text={profile.phone} />
-            {profile.website && <InfoRow icon={<Globe size={14}/>} text={profile.website} />}
-            {profile.rating  && <InfoRow icon={<Star  size={14}/>} text={`${profile.rating.toFixed(1)} ★ (${profile.reviewCount} reseñas)`} />}
+            {profile.address && (
+              <InfoRow
+                icon={<MapPin size={14} />}
+                text={`${profile.address}${profile.district ? ` — ${profile.district}` : ''}`}
+              />
+            )}
+            {profile.phone && (
+              <InfoRow icon={<Phone size={14} />} text={profile.phone} />
+            )}
+            {profile.website && (
+              <InfoRow icon={<Globe size={14} />} text={profile.website} />
+            )}
+            {profile.rating != null && (
+              <InfoRow
+                icon={<Star size={14} />}
+                text={`${profile.rating.toFixed(1)} ★ (${profile.reviewCount ?? 0} reseñas)`}
+              />
+            )}
           </div>
 
           {profile.status === 'PENDING' && (
@@ -82,7 +120,7 @@ export default function MyProfile() {
             </div>
           )}
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

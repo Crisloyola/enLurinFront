@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Search, MapPin, Star, Phone } from 'lucide-react'
+import { Search, MapPin, Star } from 'lucide-react'
 import { profileService, type Profile } from '../../services/profile.service'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -84,12 +84,8 @@ function Hero() {
 
 // ── Profile Card ──────────────────────────────────────────────────────────
 function ProfileCard({ p }: { p: Profile }) {
-  const { user } = useAuth()
   const gradient = GRADIENTS[p.category] ?? 'from-orange-400 to-orange-600'
-  const isAdmin = user?.role === 'ADMIN'
-  const href = isAdmin ? '/admin' : `/perfil/${p.slug}`
-
-  console.log('user role:', user?.role, 'isAdmin:', isAdmin)
+  const href = `/perfil/${p.slug}`
 
   return (
     <Link to={href}

@@ -10,31 +10,38 @@ export interface AppUser {
 }
 
 export const adminService = {
-  // GET /admin/profiles?status=PENDING  (perfiles pendientes)
+
+  // GET /admin/profiles?status=PENDING
   getPending: async (): Promise<Profile[]> => {
-    const { data } = await api.get('/admin/profiles', { params: { status: 'PENDING' } })
+    const { data } = await api.get('/admin/profiles', {
+      params: { status: 'PENDING' }
+    })
     return data
   },
 
   // GET /admin/profiles?status=ACTIVE
   getAllProfiles: async (): Promise<Profile[]> => {
-    const { data } = await api.get('/admin/profiles', { params: { status: 'ACTIVE' } })
+    const { data } = await api.get('/admin/profiles', {
+      params: { status: 'ACTIVE' }
+    })
     return data
   },
 
   // GET /admin/profiles?status=INACTIVE
   getSuspended: async (): Promise<Profile[]> => {
-    const { data } = await api.get('/admin/profiles', { params: { status: 'INACTIVE' } })
+    const { data } = await api.get('/admin/profiles', {
+      params: { status: 'INACTIVE' }
+    })
     return data
   },
 
-  // PUT /admin/profiles/{id}/approve  → pone ACTIVE
+  // PUT /admin/profiles/{id}/approve
   approve: async (id: number): Promise<Profile> => {
     const { data } = await api.put(`/admin/profiles/${id}/approve`, {})
     return data
   },
 
-  // PUT /admin/profiles/{id}/suspend  → pone INACTIVE
+  // PUT /admin/profiles/{id}/suspend
   suspend: async (id: number): Promise<Profile> => {
     const { data } = await api.put(`/admin/profiles/${id}/suspend`, {})
     return data

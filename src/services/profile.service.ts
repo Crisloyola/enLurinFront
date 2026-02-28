@@ -39,9 +39,9 @@ export const profileService = {
     const { data } = await api.get('/profiles/public', { params })
     return data
   },
-  // GET /profiles/public/search?q=&category=&district=
+  // GET /profiles/public?q=&category=&district=
   search: async (params: { q?: string; category?: string; district?: string }): Promise<Profile[]> => {
-    const { data } = await api.get('/profiles/public/search', { params })
+    const { data } = await api.get('/profiles/public', { params })
     return data
   },
   // GET /profiles/public/{slug}
