@@ -1,4 +1,4 @@
-# Enlurin Frontend
+# Eslurin Frontend
 
 Directorio digital de servicios y empresas en Lurín, Perú.
 
