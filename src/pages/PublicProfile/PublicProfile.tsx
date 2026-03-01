@@ -36,14 +36,24 @@ export default function PublicProfile() {
       </Link>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className={`h-52 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
-          {p.logoUrl
-            ? <img src={p.logoUrl} alt={p.businessName} className="h-full w-full object-cover" />
-            : <span className="text-8xl font-bold text-white/30">{p.businessName.charAt(0)}</span>
-          }
+
+        {/* Banner + Logo */}
+        <div className={`relative h-52 bg-gradient-to-br ${gradient} overflow-hidden`}>
+          {p.bannerUrl && (
+            <img src={p.bannerUrl} alt="banner" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          {/* Logo encima del banner */}
+          <div className="absolute bottom-0 left-6 translate-y-1/2 z-10">
+            <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center">
+              {p.logoUrl
+                ? <img src={p.logoUrl} alt={p.businessName} className="w-full h-full object-cover" />
+                : <span className="text-3xl font-bold text-orange-400">{p.businessName.charAt(0)}</span>
+              }
+            </div>
+          </div>
         </div>
 
-        <div className="p-6 md:p-8">
+        <div className="p-6 md:p-8 pt-14">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
             <div>
               <span className="inline-block bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full mb-2">
