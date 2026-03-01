@@ -18,7 +18,9 @@ export default function PublicProfile() {
       <Link to="/explorar" className="text-orange-500 font-semibold hover:underline">Ver todos los servicios</Link>
     </div>
   )
-
+  // Temporal para debug — borrarlo después
+  console.log('bannerUrl:', p.bannerUrl)
+  console.log('logoUrl:', p.logoUrl)
   const GRADIENTS: Record<string, string> = {
     'Restaurantes': 'from-orange-400 to-red-500',
     'Médicos':      'from-blue-400 to-cyan-500',
@@ -37,21 +39,22 @@ export default function PublicProfile() {
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
 
-        {/* Banner + Logo */}
-        <div className={`relative h-52 bg-gradient-to-br ${gradient} overflow-hidden`}>
-          {p.bannerUrl && (
-            <img src={p.bannerUrl} alt="banner" className="absolute inset-0 w-full h-full object-cover" />
-          )}
-          {/* Logo encima del banner */}
-          <div className="absolute bottom-0 left-6 translate-y-1/2 z-10">
-            <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center">
-              {p.logoUrl
-                ? <img src={p.logoUrl} alt={p.businessName} className="w-full h-full object-cover" />
-                : <span className="text-3xl font-bold text-orange-400">{p.businessName.charAt(0)}</span>
-              }
-            </div>
-          </div>
+       {/* Banner + Logo */}
+      <div className={`relative h-52 bg-gradient-to-br ${gradient} overflow-hidden`}>
+        {p.bannerUrl && (
+          <img src={p.bannerUrl} alt="banner" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+      </div>
+
+      {/* Logo — FUERA del div del banner */}
+      <div className="relative px-6 -mt-10 mb-2">
+        <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-white flex items-center justify-center">
+          {p.logoUrl
+            ? <img src={p.logoUrl} alt={p.businessName} className="w-full h-full object-cover" />
+            : <span className="text-3xl font-bold text-orange-400">{p.businessName.charAt(0)}</span>
+          }
         </div>
+      </div>
 
         <div className="p-6 md:p-8 pt-14">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
@@ -105,4 +108,6 @@ function InfoRow({ icon, text }: { icon: React.ReactNode; text: string }) {
       <span className="break-all">{text}</span>
     </div>
   )
+
 }
+
