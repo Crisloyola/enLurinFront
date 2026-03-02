@@ -5,6 +5,7 @@ import { profileService, type ProfileForm } from '../../services/profile.service
 import { useFetch } from '../../hooks/useFetch'
 import Loader from '../../components/common/Loader'
 
+
 const CATEGORIES = [
   'Restaurantes', 'Médicos', 'Abogados', 'Odontólogos', 'Contadores',
   'Hoteles', 'Veterinarias', 'Delivery', 'Hogar & Reparaciones',

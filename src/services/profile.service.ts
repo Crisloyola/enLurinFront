@@ -17,7 +17,26 @@ export interface Profile {
   status:       'ACTIVE' | 'INACTIVE' | 'PENDING'
   featured?:    boolean
   createdAt:    string
+  // Nuevos campos
+  whatsapp?:    string
+  latitude?:    number
+  longitude?:   number
+  schedule?:    string
+  instagram?:   string
+  facebook?:    string
+  youtube?:     string
+  tiktok?:      string
+  mediaItems?:  MediaItem[]
 }
+interface MediaItem {
+  id:        number
+  type:      'PHOTO' | 'VIDEO' | 'REEL'
+  url:       string
+  thumbnail?: string
+  title?:    string
+  createdAt: string
+}
+
 
 export interface ProfileForm {
   businessName: string
@@ -27,6 +46,15 @@ export interface ProfileForm {
   phone:        string
   address:      string
   website?:     string
+  // Nuevos
+  whatsapp?:    string
+  latitude?:    number
+  longitude?:   number
+  schedule?:    string
+  instagram?:   string
+  facebook?:    string
+  youtube?:     string
+  tiktok?:      string
 }
 
 export const profileService = {
@@ -79,6 +107,27 @@ export const profileService = {
     const { data } = await api.post('/profiles/me/banner', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
+    return data
+  },
+
+  // Media
+  getMyMedia: async (): Promise<MediaItem[]> => {
+    const { data } = await api.get('/profiles/me/media')
+    return data
+  },
+  uploadMedia: async (file: File, type: 'PHOTO' | 'VIDEO' | 'REEL', title?: string): Promise<MediaItem> => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('type', type)
+    if (title) form.append('title', title)
+    const { data } = await api.post('/profiles/me/media', form)
+    return data
+  },
+  deleteMedia: async (mediaId: number): Promise<void> => {
+    await api.delete(`/profiles/me/media/${mediaId}`)
+  },
+  getPublicMedia: async (slug: string): Promise<MediaItem[]> => {
+    const { data } = await api.get(`/profiles/public/${slug}/media`)
     return data
   },
 }
