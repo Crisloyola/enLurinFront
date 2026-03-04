@@ -333,6 +333,7 @@ export default function EditProfile({ isNew = false }: Props) {
   const [newPhotos,        setNewPhotos]        = useState<PhotoPreview[]>([])
   const [existingPhotos,   setExistingPhotos]   = useState<ExistingPhoto[]>([])
   const [deletedPhotoIds,  setDeletedPhotoIds]  = useState<number[]>([])
+  const [deletedVideoIds,  setDeletedVideoIds]  = useState<number[]>([])
   const [videoLinks,       setVideoLinks]       = useState<VideoLink[]>([])
   const [paymentMethods,   setPaymentMethods]   = useState<string[]>([])
 
@@ -440,8 +441,16 @@ export default function EditProfile({ isNew = false }: Props) {
 
   const handleAddVideoLink = () =>
     setVideoLinks(prev => [...prev, { id: `${Date.now()}`, url: '', type: 'VIDEO', title: '' }])
-  const handleRemoveVideoLink = (id: string) =>
+  const handleRemoveVideoLink = (id: string) => {
+    // Si es un video existente (prefijo "ex-"), guardarlo para eliminarlo en el backend
+    if (id.startsWith('ex-')) {
+      const numericId = parseInt(id.replace('ex-', ''), 10)
+      if (!isNaN(numericId)) {
+        setDeletedVideoIds(prev => [...prev, numericId])
+      }
+    }
     setVideoLinks(prev => prev.filter(v => v.id !== id))
+  }
   const handleUpdateVideoLink = (id: string, field: 'url' | 'title', value: string) =>
     setVideoLinks(prev => prev.map(v => {
       if (v.id !== id) return v
@@ -488,8 +497,13 @@ export default function EditProfile({ isNew = false }: Props) {
         catch { setUploadLog(l => [...l, '⚠️ Banner no se pudo subir']) }
       }
 
+      // Eliminar fotos borradas
       for (const photoId of deletedPhotoIds) {
         try { await profileService.deleteMedia(photoId) } catch { /* ignorar */ }
+      }
+      // Eliminar videos/reels borrados
+      for (const videoId of deletedVideoIds) {
+        try { await profileService.deleteMedia(videoId) } catch { /* ignorar */ }
       }
 
       if (newPhotos.length > 0) {
@@ -504,16 +518,30 @@ export default function EditProfile({ isNew = false }: Props) {
         setUploadLog(l => [...l, `✓ ${ok}/${newPhotos.length} fotos subidas`])
       }
 
-      const validVideoLinks = videoLinks.filter(v => v.url.trim().startsWith('http'))
-      if (validVideoLinks.length > 0) {
-        setUploadLog(l => [...l, `Guardando ${validVideoLinks.length} link(s) de video...`])
-        for (const vlink of validVideoLinks) {
+      // Solo guardar los links NUEVOS (los existentes tienen id con prefijo "ex-")
+      const newVideoLinks = videoLinks.filter(
+        v => !v.id.startsWith('ex-') && v.url.trim().startsWith('http')
+      )
+      if (newVideoLinks.length > 0) {
+        setUploadLog(l => [...l, `Guardando ${newVideoLinks.length} link(s) de video...`])
+        for (const vlink of newVideoLinks) {
           try {
             await profileService.addVideoLink?.(vlink.url, vlink.type, vlink.title || undefined)
-          } catch { /* algunos pueden fallar si ya existen */ }
+          } catch { /* ignorar si ya existe */ }
         }
-        setUploadLog(l => [...l, '✓ Links de video guardados'])
+        setUploadLog(l => [...l, `✓ ${newVideoLinks.length} link(s) guardados`])
       }
+
+      // Eliminar links de video que el usuario borró (tenían id "ex-" pero ya no están en la lista)
+      // Los IDs existentes que siguen en la lista
+      const keptExIds = new Set(
+        videoLinks.filter(v => v.id.startsWith('ex-')).map(v => v.id.replace('ex-', ''))
+      )
+      // deletedPhotoIds ya maneja fotos; aquí manejamos videos borrados
+      // Los videos cargados al inicio tenían id "ex-{mediaId}"
+      // Si el usuario los eliminó con handleRemoveVideoLink, ya no están en videoLinks
+      // Necesitamos comparar contra los que se cargaron originalmente
+      // Nota: esto ya funciona si el usuario usó el botón de eliminar (Trash2) en VideoLinksManager
 
       setSuccess(true)
       setTimeout(() => navigate('/mi-perfil'), 2000)
