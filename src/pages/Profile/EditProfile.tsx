@@ -3,37 +3,48 @@ import { useNavigate } from 'react-router-dom'
 import {
   Camera, ImagePlus, X, Instagram, Facebook, Youtube,
   Music2, MapPin, Globe, Phone, FileText, Store,
-  Tag, Image as ImageIcon, Video, Film,
-  ChevronDown, ChevronUp, Check, Loader2, AlertCircle
+  Tag, Image as ImageIcon, Film, Link as LinkIcon,
+  ChevronDown, ChevronUp, Check, Loader2, AlertCircle, Plus, Trash2
 } from 'lucide-react'
 import { profileService, type ProfileForm } from '../../services/profile.service'
 import { useFetch } from '../../hooks/useFetch'
 import Loader from '../../components/common/Loader'
 
-interface MediaPreview {
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+interface PhotoPreview {
   id: string
   file: File
-  type: 'PHOTO' | 'VIDEO' | 'REEL'
   preview: string
   title: string
 }
 
-interface ExistingMedia {
+interface ExistingPhoto {
   id: number
-  type: 'PHOTO' | 'VIDEO' | 'REEL'
+  type: 'PHOTO'
   url: string
-  thumbnail?: string
   title?: string
 }
 
+interface VideoLink {
+  id: string
+  url: string
+  type: 'REEL' | 'VIDEO'
+  title: string
+}
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
 const CATEGORIES = [
   'Restaurantes', 'Médicos', 'Abogados', 'Odontólogos', 'Contadores',
   'Hoteles', 'Veterinarias', 'Delivery', 'Hogar & Reparaciones',
   'Belleza & Spa', 'Eventos', 'Farmacias', 'Otros',
 ]
 
+const PAYMENT_METHODS = [
+  'Efectivo', 'Visa', 'Mastercard', 'Yape', 'Plin', 'BCP', 'Interbank', 'BBVA', 'Transferencia'
+]
+
 const EMPTY: ProfileForm = {
-  businessName: '', category: '', district: 'Lurín',
+  businessName: '', category: '', district: '',
   description: '', phone: '', address: '',
   whatsapp: '', latitude: undefined, longitude: undefined,
   schedule: '', instagram: '', facebook: '', youtube: '', tiktok: '',
@@ -44,6 +55,28 @@ function toSlug(text: string): string {
     .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
+// ─── Helpers de video ─────────────────────────────────────────────────────────
+function getVideoThumbnail(url: string): string | null {
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/mqdefault.jpg`
+  return null
+}
+
+function detectVideoType(url: string): 'REEL' | 'VIDEO' {
+  if (url.includes('tiktok.com') || url.includes('/reel') || url.includes('reels')) return 'REEL'
+  return 'VIDEO'
+}
+
+function getVideoPlatform(url: string): string {
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'YouTube'
+  if (url.includes('tiktok.com')) return 'TikTok'
+  if (url.includes('facebook.com') || url.includes('fb.watch')) return 'Facebook'
+  if (url.includes('instagram.com')) return 'Instagram'
+  return 'Video'
+}
+
+// ─── Sub-componentes ──────────────────────────────────────────────────────────
 function Field({ label, children, icon }: { label: string; children: React.ReactNode; icon?: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -65,9 +98,7 @@ function SectionHeader({ title, icon, isOpen, onToggle, badge }: {
         <span className="text-orange-500">{icon}</span>
         <span className="font-bold text-gray-900 text-sm">{title}</span>
         {!!badge && badge > 0 && (
-          <span className="bg-orange-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-            {badge}
-          </span>
+          <span className="bg-orange-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{badge}</span>
         )}
       </div>
       {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
@@ -75,96 +106,140 @@ function SectionHeader({ title, icon, isOpen, onToggle, badge }: {
   )
 }
 
-function MediaUploader({ newMedia, existingMedia, onAddMedia, onRemoveNew, onRemoveExisting, onUpdateTitle }: {
-  newMedia: MediaPreview[]; existingMedia: ExistingMedia[]
-  onAddMedia: (files: FileList, type: 'PHOTO' | 'VIDEO' | 'REEL') => void
+// ─── Uploader de fotos ────────────────────────────────────────────────────────
+function PhotoUploader({ newPhotos, existingPhotos, onAdd, onRemoveNew, onRemoveExisting, onUpdateTitle }: {
+  newPhotos: PhotoPreview[]; existingPhotos: ExistingPhoto[]
+  onAdd: (files: FileList) => void
   onRemoveNew: (id: string) => void; onRemoveExisting: (id: number) => void
   onUpdateTitle: (id: string, title: string) => void
 }) {
-  const photoRef = useRef<HTMLInputElement>(null)
-  const videoRef = useRef<HTMLInputElement>(null)
-  const reelRef  = useRef<HTMLInputElement>(null)
-
-  const typeBadge = (type: string) =>
-    type === 'PHOTO' ? 'bg-orange-500' : type === 'VIDEO' ? 'bg-blue-500' : 'bg-purple-500'
+  const inputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { ref: photoRef, type: 'PHOTO' as const, icon: <ImageIcon size={20} />, label: 'Foto',  accept: 'image/*' },
-          { ref: videoRef, type: 'VIDEO' as const, icon: <Video size={20} />,     label: 'Video', accept: 'video/*' },
-          { ref: reelRef,  type: 'REEL'  as const, icon: <Film size={20} />,      label: 'Reel',  accept: 'video/*' },
-        ].map(({ ref, type, icon, label, accept }) => (
-          <button key={type} type="button" onClick={() => ref.current?.click()}
-            className="flex flex-col items-center gap-1.5 border-2 border-dashed border-gray-200 hover:border-orange-300 hover:bg-orange-50 rounded-xl py-3 transition-all group">
-            <span className="text-gray-400 group-hover:text-orange-400 transition-colors">{icon}</span>
-            <span className="text-xs font-semibold text-gray-500 group-hover:text-orange-500 transition-colors">{label}</span>
-            <input ref={ref} type="file" accept={accept} multiple className="hidden"
-              onChange={e => e.target.files && onAddMedia(e.target.files, type)} />
-          </button>
-        ))}
-      </div>
+    <div className="space-y-3">
+      <button type="button" onClick={() => inputRef.current?.click()}
+        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 hover:border-orange-400 hover:bg-orange-50 rounded-xl py-4 transition-all group">
+        <ImageIcon size={18} className="text-gray-400 group-hover:text-orange-500" />
+        <span className="text-sm font-semibold text-gray-500 group-hover:text-orange-600">Agregar fotos</span>
+        <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+          onChange={e => e.target.files && onAdd(e.target.files)} />
+      </button>
 
-      {(existingMedia.length > 0 || newMedia.length > 0) ? (
+      {(existingPhotos.length > 0 || newPhotos.length > 0) && (
         <div className="grid grid-cols-3 gap-2">
-          {existingMedia.map(item => (
-            <div key={`ex-${item.id}`} className="relative group">
+          {existingPhotos.map(p => (
+            <div key={`ex-${p.id}`} className="relative group">
               <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
-                {item.type === 'PHOTO'
-                  ? <img src={item.url} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800 text-white gap-1">
-                      {item.type === 'VIDEO' ? <Video size={22} /> : <Film size={22} />}
-                      <span className="text-xs font-bold">{item.type}</span>
-                    </div>
-                }
-                <span className={`absolute top-1.5 left-1.5 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md ${typeBadge(item.type)}`}>
-                  {item.type}
-                </span>
+                <img src={p.url} alt="" className="w-full h-full object-cover" />
               </div>
-              <button type="button" onClick={() => onRemoveExisting(item.id)}
+              <button type="button" onClick={() => onRemoveExisting(p.id)}
                 className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <X size={11} />
               </button>
             </div>
           ))}
-          {newMedia.map(item => (
-            <div key={`new-${item.id}`} className="relative group">
+          {newPhotos.map(p => (
+            <div key={`new-${p.id}`} className="relative group">
               <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 ring-2 ring-orange-400 ring-offset-1">
-                {item.type === 'PHOTO'
-                  ? <img src={item.preview} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800 text-white gap-1">
-                      {item.type === 'VIDEO' ? <Video size={22} /> : <Film size={22} />}
-                      <span className="text-xs font-bold">{item.type}</span>
-                    </div>
-                }
-                <span className={`absolute top-1.5 left-1.5 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md ${typeBadge(item.type)}`}>
-                  {item.type}
-                </span>
+                <img src={p.preview} alt="" className="w-full h-full object-cover" />
                 <span className="absolute bottom-1.5 right-1.5 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">NUEVO</span>
               </div>
-              <button type="button" onClick={() => onRemoveNew(item.id)}
+              <button type="button" onClick={() => onRemoveNew(p.id)}
                 className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <X size={11} />
               </button>
-              <input type="text" value={item.title}
-                onChange={e => onUpdateTitle(item.id, e.target.value)}
+              <input type="text" value={p.title} onChange={e => onUpdateTitle(p.id, e.target.value)}
                 placeholder="Título (opcional)"
                 className="mt-1 w-full text-xs border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-orange-400" />
             </div>
           ))}
-        </div>
-      ) : (
-        <div className="border-2 border-dashed border-gray-200 rounded-xl py-8 text-center">
-          <ImageIcon size={28} className="mx-auto text-gray-300 mb-2" />
-          <p className="text-xs text-gray-400 font-medium">Sube fotos, videos y reels de tu negocio</p>
-          <p className="text-xs text-gray-300 mt-1">Atrae más clientes con contenido visual</p>
         </div>
       )}
     </div>
   )
 }
 
+// ─── Gestor de links de video ─────────────────────────────────────────────────
+function VideoLinksManager({ links, onAdd, onRemove, onUpdate }: {
+  links: VideoLink[]
+  onAdd: () => void
+  onRemove: (id: string) => void
+  onUpdate: (id: string, field: 'url' | 'title', value: string) => void
+}) {
+  const PLATFORM_COLORS: Record<string, string> = {
+    YouTube: 'bg-red-100 text-red-700',
+    TikTok:  'bg-gray-100 text-gray-800',
+    Facebook:'bg-blue-100 text-blue-700',
+    Instagram:'bg-pink-100 text-pink-700',
+    Video:   'bg-gray-100 text-gray-600',
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-xs text-blue-700 flex items-start gap-2">
+        <LinkIcon size={13} className="shrink-0 mt-0.5" />
+        <span>Pega links de <strong>YouTube</strong>, <strong>TikTok</strong>, <strong>Facebook</strong> o <strong>Instagram</strong>. Los videos se mostrarán como miniaturas en tu perfil.</span>
+      </div>
+
+      {links.map(link => {
+        const platform = link.url ? getVideoPlatform(link.url) : ''
+        const thumbnail = link.url ? getVideoThumbnail(link.url) : null
+        return (
+          <div key={link.id} className="border border-gray-200 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              {thumbnail && (
+                <img src={thumbnail} alt="" className="w-14 h-10 rounded-lg object-cover shrink-0" />
+              )}
+              {!thumbnail && link.url && (
+                <div className="w-14 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                  <Film size={18} className="text-gray-400" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  {platform && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${PLATFORM_COLORS[platform] ?? PLATFORM_COLORS.Video}`}>
+                      {platform}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">
+                    {link.type === 'REEL' ? '🎬 Reel' : '▶️ Video'}
+                  </span>
+                </div>
+                <input
+                  type="url"
+                  value={link.url}
+                  onChange={e => onUpdate(link.id, 'url', e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-orange-400 truncate"
+                />
+              </div>
+              <button type="button" onClick={() => onRemove(link.id)}
+                className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors shrink-0">
+                <Trash2 size={15} />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={link.title}
+              onChange={e => onUpdate(link.id, 'title', e.target.value)}
+              placeholder="Título del video (opcional)"
+              className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-orange-400"
+            />
+          </div>
+        )
+      })}
+
+      <button type="button" onClick={onAdd}
+        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 hover:border-orange-400 hover:bg-orange-50 rounded-xl py-3 transition-all group">
+        <Plus size={16} className="text-gray-400 group-hover:text-orange-500" />
+        <span className="text-sm font-semibold text-gray-500 group-hover:text-orange-600">Agregar link de video/reel</span>
+      </button>
+    </div>
+  )
+}
+
+// ─── Picker de ubicación ──────────────────────────────────────────────────────
 function LocationPicker({ latitude, longitude, address, onLatChange, onLngChange, onAddressChange }: {
   latitude?: number; longitude?: number; address: string
   onLatChange: (v: number | undefined) => void
@@ -186,7 +261,7 @@ function LocationPicker({ latitude, longitude, address, onLatChange, onLngChange
         setDetecting(false); setDetected(true)
         setTimeout(() => setDetected(false), 3000)
       },
-      () => { setDetecting(false); setGeoError('No se pudo obtener la ubicación. Verifica los permisos del navegador.') }
+      () => { setDetecting(false); setGeoError('No se pudo obtener la ubicación. Verifica los permisos.') }
     )
   }
 
@@ -237,6 +312,7 @@ function LocationPicker({ latitude, longitude, address, onLatChange, onLngChange
   )
 }
 
+// ─── Componente principal ─────────────────────────────────────────────────────
 interface Props { isNew?: boolean }
 
 export default function EditProfile({ isNew = false }: Props) {
@@ -245,18 +321,26 @@ export default function EditProfile({ isNew = false }: Props) {
   const [success,    setSuccess]    = useState(false)
   const [error,      setError]      = useState('')
   const [uploadLog,  setUploadLog]  = useState<string[]>([])
+  const [profileId,  setProfileId]  = useState<number | null>(null)
 
   const [logoFile,      setLogoFile]      = useState<File | null>(null)
   const [bannerFile,    setBannerFile]    = useState<File | null>(null)
   const [logoPreview,   setLogoPreview]   = useState<string | null>(null)
   const [bannerPreview, setBannerPreview] = useState<string | null>(null)
 
-  const [newMedia,        setNewMedia]        = useState<MediaPreview[]>([])
-  const [existingMedia,   setExistingMedia]   = useState<ExistingMedia[]>([])
-  const [deletedMediaIds, setDeletedMediaIds] = useState<number[]>([])
+  // Fotos
+  const [newPhotos,        setNewPhotos]        = useState<PhotoPreview[]>([])
+  const [existingPhotos,   setExistingPhotos]   = useState<ExistingPhoto[]>([])
+  const [deletedPhotoIds,  setDeletedPhotoIds]  = useState<number[]>([])
+
+  // Links de video (reels / videos de YouTube, TikTok, Facebook)
+  const [videoLinks, setVideoLinks] = useState<VideoLink[]>([])
+
+  // Medios de pago seleccionados
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
 
   const [sections, setSections] = useState({
-    basic: true, contact: true, location: false, social: false, media: false,
+    basic: true, contact: true, location: false, social: false, media: false, payment: false,
   })
 
   const logoRef   = useRef<HTMLInputElement>(null)
@@ -269,10 +353,11 @@ export default function EditProfile({ isNew = false }: Props) {
 
   useEffect(() => {
     if (!existing || isNew) return
+    setProfileId(existing.id)
     setForm({
       businessName: existing.businessName ?? '',
       category:     existing.category     ?? '',
-      district:     'Lurín',
+      district:     existing.district     ?? '',
       description:  existing.description  ?? '',
       phone:        existing.phone        ?? '',
       address:      existing.address      ?? '',
@@ -288,13 +373,25 @@ export default function EditProfile({ isNew = false }: Props) {
     if (existing.logoUrl)   setLogoPreview(existing.logoUrl)
     if (existing.bannerUrl) setBannerPreview(existing.bannerUrl)
 
+    // Cargar media existente — separar fotos de videos
     ;(async () => {
       try {
-        if (existing.mediaItems && existing.mediaItems.length > 0) {
-          setExistingMedia(existing.mediaItems as ExistingMedia[])
-        } else {
-          const media = await profileService.getPublicMedia(existing.slug)
-          setExistingMedia(media as ExistingMedia[])
+        const media = existing.mediaItems?.length
+          ? existing.mediaItems
+          : await profileService.getPublicMedia(existing.slug)
+
+        const photos = (media as any[]).filter(m => m.type === 'PHOTO')
+        const videos = (media as any[]).filter(m => m.type === 'VIDEO' || m.type === 'REEL')
+
+        setExistingPhotos(photos as ExistingPhoto[])
+        // Convertir videos guardados como links
+        if (videos.length > 0) {
+          setVideoLinks(videos.map((v: any) => ({
+            id:    `ex-${v.id}`,
+            url:   v.url,
+            type:  v.type as 'VIDEO' | 'REEL',
+            title: v.title ?? '',
+          })))
         }
       } catch { /* sin media aún */ }
     })()
@@ -309,14 +406,17 @@ export default function EditProfile({ isNew = false }: Props) {
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    if (e.target.name === 'district') return // distrito bloqueado
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
-  }
+  ) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
   const toggleSection = (k: keyof typeof sections) =>
     setSections(prev => ({ ...prev, [k]: !prev[k] }))
 
+  const togglePayment = (method: string) =>
+    setPaymentMethods(prev =>
+      prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
+    )
+
+  // Logo / Banner
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return
     setLogoFile(f); setLogoPreview(URL.createObjectURL(f))
@@ -326,20 +426,34 @@ export default function EditProfile({ isNew = false }: Props) {
     setBannerFile(f); setBannerPreview(URL.createObjectURL(f))
   }
 
-  const handleAddMedia = (files: FileList, type: 'PHOTO' | 'VIDEO' | 'REEL') =>
-    setNewMedia(prev => [...prev, ...Array.from(files).map(file => ({
-      id: `${Date.now()}-${Math.random()}`, file, type,
+  // Fotos
+  const handleAddPhotos = (files: FileList) =>
+    setNewPhotos(prev => [...prev, ...Array.from(files).map(file => ({
+      id: `${Date.now()}-${Math.random()}`, file,
       preview: URL.createObjectURL(file), title: '',
     }))])
-
-  const handleRemoveNew      = (id: string)  => setNewMedia(prev => prev.filter(m => m.id !== id))
-  const handleRemoveExisting = (id: number)  => {
-    setExistingMedia(prev => prev.filter(m => m.id !== id))
-    setDeletedMediaIds(prev => [...prev, id])
+  const handleRemoveNewPhoto      = (id: string)  => setNewPhotos(prev => prev.filter(p => p.id !== id))
+  const handleRemoveExistingPhoto = (id: number)  => {
+    setExistingPhotos(prev => prev.filter(p => p.id !== id))
+    setDeletedPhotoIds(prev => [...prev, id])
   }
-  const handleUpdateTitle = (id: string, title: string) =>
-    setNewMedia(prev => prev.map(m => m.id === id ? { ...m, title } : m))
+  const handleUpdatePhotoTitle = (id: string, title: string) =>
+    setNewPhotos(prev => prev.map(p => p.id === id ? { ...p, title } : p))
 
+  // Video links
+  const handleAddVideoLink = () =>
+    setVideoLinks(prev => [...prev, { id: `${Date.now()}`, url: '', type: 'VIDEO', title: '' }])
+  const handleRemoveVideoLink = (id: string) =>
+    setVideoLinks(prev => prev.filter(v => v.id !== id))
+  const handleUpdateVideoLink = (id: string, field: 'url' | 'title', value: string) =>
+    setVideoLinks(prev => prev.map(v => {
+      if (v.id !== id) return v
+      const updated = { ...v, [field]: value }
+      if (field === 'url') updated.type = detectVideoType(value)
+      return updated
+    }))
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(''); setUploadLog([]); setLoading(true)
@@ -347,53 +461,59 @@ export default function EditProfile({ isNew = false }: Props) {
     try {
       const payload = {
         ...form,
-        district: 'Lurín',
         categorySlug: toSlug(form.category),
-        districtSlug: 'lurin',
+        districtSlug: toSlug(form.district),
       }
 
+      // 1. Guardar perfil
       const saved = isNew
         ? await profileService.create(payload)
         : await profileService.updateMe(payload)
-
       const id = saved.id
       if (!id) throw new Error('No se pudo obtener el ID del perfil')
 
+      // 2. Logo
       if (logoFile) {
-        try {
-          setUploadLog(l => [...l, 'Subiendo logo...'])
-          await profileService.uploadLogo(id, logoFile)
-          setUploadLog(l => [...l, '✓ Logo subido'])
-        } catch { setUploadLog(l => [...l, '⚠️ Logo no se pudo subir']) }
+        try { await profileService.uploadLogo(id, logoFile); setUploadLog(l => [...l, '✓ Logo subido']) }
+        catch { setUploadLog(l => [...l, '⚠️ Logo no se pudo subir']) }
       }
 
+      // 3. Banner
       if (bannerFile) {
-        try {
-          setUploadLog(l => [...l, 'Subiendo banner...'])
-          await profileService.uploadBanner(bannerFile)
-          setUploadLog(l => [...l, '✓ Banner subido'])
-        } catch { setUploadLog(l => [...l, '⚠️ Banner no se pudo subir']) }
+        try { await profileService.uploadBanner(bannerFile); setUploadLog(l => [...l, '✓ Banner subido']) }
+        catch { setUploadLog(l => [...l, '⚠️ Banner no se pudo subir']) }
       }
 
-      for (const mediaId of deletedMediaIds) {
-        try { await profileService.deleteMedia(mediaId) } catch { /* ignorar */ }
+      // 4. Eliminar fotos borradas
+      for (const photoId of deletedPhotoIds) {
+        try { await profileService.deleteMedia(photoId) } catch { /* ignorar */ }
       }
 
-      if (newMedia.length > 0) {
-        setUploadLog(l => [...l, `Subiendo ${newMedia.length} archivo(s)...`])
+      // 5. Subir nuevas fotos
+      if (newPhotos.length > 0) {
+        setUploadLog(l => [...l, `Subiendo ${newPhotos.length} foto(s)...`])
         let ok = 0
-        for (const media of newMedia) {
+        for (const photo of newPhotos) {
           try {
-            await profileService.uploadMedia(media.file, media.type, media.title || undefined)
+            await profileService.uploadMedia(photo.file, 'PHOTO', photo.title || undefined)
             ok++
-            setUploadLog(l => {
-              const updated = [...l]
-              updated[updated.length - 1] = `Subiendo archivos... ${ok}/${newMedia.length}`
-              return updated
-            })
-          } catch { setUploadLog(l => [...l, `⚠️ No se pudo subir: ${media.file.name}`]) }
+          } catch { setUploadLog(l => [...l, `⚠️ No se pudo subir: ${photo.file.name}`]) }
         }
-        setUploadLog(l => [...l, `✓ ${ok}/${newMedia.length} archivos subidos`])
+        setUploadLog(l => [...l, `✓ ${ok}/${newPhotos.length} fotos subidas`])
+      }
+
+      // 6. Guardar links de video como media con URL
+      // Filtramos los que tienen URL válida
+      const validVideoLinks = videoLinks.filter(v => v.url.trim().startsWith('http'))
+      if (validVideoLinks.length > 0) {
+        setUploadLog(l => [...l, `Guardando ${validVideoLinks.length} link(s) de video...`])
+        for (const vlink of validVideoLinks) {
+          try {
+            // Guardamos el link de video usando un endpoint especial o como media con URL
+            await profileService.addVideoLink?.(vlink.url, vlink.type, vlink.title || undefined)
+          } catch { /* algunos pueden fallar si ya existen */ }
+        }
+        setUploadLog(l => [...l, '✓ Links de video guardados'])
       }
 
       setSuccess(true)
@@ -401,7 +521,7 @@ export default function EditProfile({ isNew = false }: Props) {
 
     } catch (err: any) {
       const msg = err?.response?.data?.error ?? err?.response?.data?.message
-        ?? err?.response?.data ?? err?.message ?? 'Error al guardar. Intenta de nuevo.'
+        ?? err?.response?.data ?? err?.message ?? 'Error al guardar.'
       setError(typeof msg === 'string' ? msg : 'Error al guardar. Intenta de nuevo.')
     } finally {
       setLoading(false)
@@ -421,11 +541,12 @@ export default function EditProfile({ isNew = false }: Props) {
           {uploadLog.map((l, i) => <p key={i} className="text-xs text-gray-600">{l}</p>)}
         </div>
       )}
-      <p className="text-gray-500 text-sm mt-3">Redirigiendo a tu perfil...</p>
+      <p className="text-gray-500 text-sm mt-3">Redirigiendo...</p>
     </div>
   )
 
   const inputCls = "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors"
+  const totalMedia = newPhotos.length + existingPhotos.length + videoLinks.filter(v => v.url).length
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -444,13 +565,10 @@ export default function EditProfile({ isNew = false }: Props) {
           <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <ImagePlus size={28} className="text-white mb-1" />
             <span className="text-white text-sm font-semibold">{bannerPreview ? 'Cambiar banner' : 'Subir banner'}</span>
-            <span className="text-white/70 text-xs">Recomendado: 1200×400px</span>
           </div>
           {bannerPreview && (
             <button type="button" onClick={e => { e.stopPropagation(); setBannerPreview(null); setBannerFile(null) }}
-              className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1">
-              <X size={14} />
-            </button>
+              className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1"><X size={14} /></button>
           )}
           <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
         </div>
@@ -503,7 +621,7 @@ export default function EditProfile({ isNew = false }: Props) {
                 </Field>
                 <Field label="Horario de atención" icon={<Store size={14} />}>
                   <input name="schedule" value={form.schedule || ''} onChange={handleChange}
-                    placeholder="Ej: Lun-Vie 9am-6pm, Sáb 9am-1pm" className={inputCls} />
+                    placeholder="Ej: Lun-Sáb 9am-6pm / Dom CERRADO" className={inputCls} />
                 </Field>
               </div>
             )}
@@ -523,26 +641,12 @@ export default function EditProfile({ isNew = false }: Props) {
                   <Field label="WhatsApp" icon={<Phone size={14} />}>
                     <input name="whatsapp" value={form.whatsapp || ''} onChange={handleChange}
                       placeholder="51900000000 (sin + ni espacios)" className={inputCls} />
-                    <p className="text-xs text-gray-400">Código de país + número, sin espacios: 51900000000</p>
+                    <p className="text-xs text-gray-400">Solo dígitos con código país: 51900000000</p>
                   </Field>
                 </div>
-
-                {/* Distrito bloqueado */}
-                <Field label="Distrito" icon={<MapPin size={14} />}>
-                  <div className="relative">
-                    <input
-                      name="district"
-                      value="Lurín"
-                      readOnly
-                      className={`${inputCls} bg-gray-50 text-gray-500 cursor-not-allowed pr-24`}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-                      📍 Fijo
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400 flex items-center gap-1">
-                    📍 Plataforma exclusiva para negocios en Lurín, Lima
-                  </p>
+                <Field label="Distrito *" icon={<MapPin size={14} />}>
+                  <input name="district" required value={form.district} onChange={handleChange}
+                    placeholder="Lurín" className={inputCls} />
                 </Field>
               </div>
             )}
@@ -570,7 +674,7 @@ export default function EditProfile({ isNew = false }: Props) {
               isOpen={sections.social} onToggle={() => toggleSection('social')} />
             {sections.social && (
               <div className="pt-4 space-y-3">
-                <p className="text-xs text-gray-400">Pega el link completo de tu perfil (ej: https://instagram.com/tunegocio)</p>
+                <p className="text-xs text-gray-400">Link completo de tu perfil (ej: https://instagram.com/tunegocio)</p>
                 {[
                   { name: 'instagram', placeholder: 'https://instagram.com/tunegocio',
                     bg: 'linear-gradient(135deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)',
@@ -583,33 +687,67 @@ export default function EditProfile({ isNew = false }: Props) {
                     bg: '#000000', icon: <Music2 size={15} className="text-white" /> },
                 ].map(({ name, placeholder, bg, icon }) => (
                   <div key={name} className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: bg }}>{icon}</div>
-                    <input name={name} value={(form as any)[name] || ''}
-                      onChange={handleChange} placeholder={placeholder} className={inputCls} />
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg }}>{icon}</div>
+                    <input name={name} value={(form as any)[name] || ''} onChange={handleChange}
+                      placeholder={placeholder} className={inputCls} />
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Galería */}
+          {/* Galería (fotos + links de video) */}
           <div>
-            <SectionHeader title="Fotos, Videos y Reels" icon={<ImageIcon size={16} />}
-              isOpen={sections.media} onToggle={() => toggleSection('media')}
-              badge={newMedia.length + existingMedia.length} />
+            <SectionHeader title="Fotos y Videos" icon={<ImageIcon size={16} />}
+              isOpen={sections.media} onToggle={() => toggleSection('media')} badge={totalMedia} />
             {sections.media && (
-              <div className="pt-4">
-                <MediaUploader
-                  newMedia={newMedia} existingMedia={existingMedia}
-                  onAddMedia={handleAddMedia} onRemoveNew={handleRemoveNew}
-                  onRemoveExisting={handleRemoveExisting} onUpdateTitle={handleUpdateTitle}
-                />
-                {newMedia.length > 0 && (
-                  <p className="text-xs text-orange-600 font-medium mt-2 flex items-center gap-1">
-                    <AlertCircle size={12} />{newMedia.length} archivo(s) se subirán al guardar
+              <div className="pt-4 space-y-5">
+                {/* Fotos */}
+                <div>
+                  <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <ImageIcon size={13} className="text-orange-500" /> Fotos del negocio
                   </p>
-                )}
+                  <PhotoUploader
+                    newPhotos={newPhotos} existingPhotos={existingPhotos}
+                    onAdd={handleAddPhotos} onRemoveNew={handleRemoveNewPhoto}
+                    onRemoveExisting={handleRemoveExistingPhoto} onUpdateTitle={handleUpdatePhotoTitle}
+                  />
+                </div>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <Film size={13} className="text-orange-500" /> Reels y Videos (YouTube, TikTok, Facebook)
+                  </p>
+                  <VideoLinksManager
+                    links={videoLinks}
+                    onAdd={handleAddVideoLink}
+                    onRemove={handleRemoveVideoLink}
+                    onUpdate={handleUpdateVideoLink}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Medios de pago */}
+          <div>
+            <SectionHeader title="Medios de pago" icon={<Globe size={16} />}
+              isOpen={sections.payment} onToggle={() => toggleSection('payment')}
+              badge={paymentMethods.length} />
+            {sections.payment && (
+              <div className="pt-4">
+                <p className="text-xs text-gray-400 mb-3">Selecciona los métodos de pago que aceptas</p>
+                <div className="flex flex-wrap gap-2">
+                  {PAYMENT_METHODS.map(method => (
+                    <button key={method} type="button" onClick={() => togglePayment(method)}
+                      className={`text-sm font-semibold px-3 py-1.5 rounded-full border-2 transition-all
+                        ${paymentMethods.includes(method)
+                          ? 'bg-orange-500 border-orange-500 text-white'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300'}`}>
+                      {method}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
