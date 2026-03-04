@@ -19,7 +19,7 @@ export default function Header() {
         <div className="h-16 flex items-center justify-between gap-6">
 
           <Link to="/" className="font-extrabold text-xl shrink-0">
-            <span className="text-gray-900">ESLURIN</span>
+            <span className="text-gray-900">ENLURIN</span>
             <span className="text-orange-500">.PE</span>
           </Link>
 

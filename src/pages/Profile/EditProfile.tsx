@@ -33,7 +33,7 @@ const CATEGORIES = [
 ]
 
 const EMPTY: ProfileForm = {
-  businessName: '', category: '', district: '',
+  businessName: '', category: '', district: 'Lurín',
   description: '', phone: '', address: '',
   whatsapp: '', latitude: undefined, longitude: undefined,
   schedule: '', instagram: '', facebook: '', youtube: '', tiktok: '',
@@ -92,9 +92,9 @@ function MediaUploader({ newMedia, existingMedia, onAddMedia, onRemoveNew, onRem
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
         {[
-          { ref: photoRef, type: 'PHOTO' as const, icon: <ImageIcon size={20} />, label: 'Foto', accept: 'image/*', hover: 'hover:border-orange-400 hover:bg-orange-50 group-hover:text-orange-500 group-hover:text-orange-600' },
-          { ref: videoRef, type: 'VIDEO' as const, icon: <Video size={20} />,     label: 'Video', accept: 'video/*', hover: 'hover:border-blue-400 hover:bg-blue-50 group-hover:text-blue-500 group-hover:text-blue-600' },
-          { ref: reelRef,  type: 'REEL'  as const, icon: <Film size={20} />,      label: 'Reel',  accept: 'video/*', hover: 'hover:border-purple-400 hover:bg-purple-50 group-hover:text-purple-500 group-hover:text-purple-600' },
+          { ref: photoRef, type: 'PHOTO' as const, icon: <ImageIcon size={20} />, label: 'Foto',  accept: 'image/*' },
+          { ref: videoRef, type: 'VIDEO' as const, icon: <Video size={20} />,     label: 'Video', accept: 'video/*' },
+          { ref: reelRef,  type: 'REEL'  as const, icon: <Film size={20} />,      label: 'Reel',  accept: 'video/*' },
         ].map(({ ref, type, icon, label, accept }) => (
           <button key={type} type="button" onClick={() => ref.current?.click()}
             className="flex flex-col items-center gap-1.5 border-2 border-dashed border-gray-200 hover:border-orange-300 hover:bg-orange-50 rounded-xl py-3 transition-all group">
@@ -245,7 +245,6 @@ export default function EditProfile({ isNew = false }: Props) {
   const [success,    setSuccess]    = useState(false)
   const [error,      setError]      = useState('')
   const [uploadLog,  setUploadLog]  = useState<string[]>([])
-  const [profileId,  setProfileId]  = useState<number | null>(null)
 
   const [logoFile,      setLogoFile]      = useState<File | null>(null)
   const [bannerFile,    setBannerFile]    = useState<File | null>(null)
@@ -270,11 +269,10 @@ export default function EditProfile({ isNew = false }: Props) {
 
   useEffect(() => {
     if (!existing || isNew) return
-    setProfileId(existing.id)
     setForm({
       businessName: existing.businessName ?? '',
       category:     existing.category     ?? '',
-      district:     existing.district     ?? '',
+      district:     'Lurín',
       description:  existing.description  ?? '',
       phone:        existing.phone        ?? '',
       address:      existing.address      ?? '',
@@ -290,7 +288,6 @@ export default function EditProfile({ isNew = false }: Props) {
     if (existing.logoUrl)   setLogoPreview(existing.logoUrl)
     if (existing.bannerUrl) setBannerPreview(existing.bannerUrl)
 
-    // Cargar media existente
     ;(async () => {
       try {
         if (existing.mediaItems && existing.mediaItems.length > 0) {
@@ -312,7 +309,10 @@ export default function EditProfile({ isNew = false }: Props) {
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  ) => {
+    if (e.target.name === 'district') return // distrito bloqueado
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
 
   const toggleSection = (k: keyof typeof sections) =>
     setSections(prev => ({ ...prev, [k]: !prev[k] }))
@@ -347,11 +347,11 @@ export default function EditProfile({ isNew = false }: Props) {
     try {
       const payload = {
         ...form,
+        district: 'Lurín',
         categorySlug: toSlug(form.category),
-        districtSlug: toSlug(form.district),
+        districtSlug: 'lurin',
       }
 
-      // PASO 1: Guardar perfil — obtenemos el id real del servidor
       const saved = isNew
         ? await profileService.create(payload)
         : await profileService.updateMe(payload)
@@ -359,7 +359,6 @@ export default function EditProfile({ isNew = false }: Props) {
       const id = saved.id
       if (!id) throw new Error('No se pudo obtener el ID del perfil')
 
-      // PASO 2: Logo
       if (logoFile) {
         try {
           setUploadLog(l => [...l, 'Subiendo logo...'])
@@ -368,7 +367,6 @@ export default function EditProfile({ isNew = false }: Props) {
         } catch { setUploadLog(l => [...l, '⚠️ Logo no se pudo subir']) }
       }
 
-      // PASO 3: Banner
       if (bannerFile) {
         try {
           setUploadLog(l => [...l, 'Subiendo banner...'])
@@ -377,12 +375,10 @@ export default function EditProfile({ isNew = false }: Props) {
         } catch { setUploadLog(l => [...l, '⚠️ Banner no se pudo subir']) }
       }
 
-      // PASO 4: Eliminar media borrada
       for (const mediaId of deletedMediaIds) {
         try { await profileService.deleteMedia(mediaId) } catch { /* ignorar */ }
       }
 
-      // PASO 5: Subir nueva media — secuencial
       if (newMedia.length > 0) {
         setUploadLog(l => [...l, `Subiendo ${newMedia.length} archivo(s)...`])
         let ok = 0
@@ -530,9 +526,23 @@ export default function EditProfile({ isNew = false }: Props) {
                     <p className="text-xs text-gray-400">Código de país + número, sin espacios: 51900000000</p>
                   </Field>
                 </div>
-                <Field label="Distrito *" icon={<MapPin size={14} />}>
-                  <input name="district" required value={form.district} onChange={handleChange}
-                    placeholder="Lurín" className={inputCls} />
+
+                {/* Distrito bloqueado */}
+                <Field label="Distrito" icon={<MapPin size={14} />}>
+                  <div className="relative">
+                    <input
+                      name="district"
+                      value="Lurín"
+                      readOnly
+                      className={`${inputCls} bg-gray-50 text-gray-500 cursor-not-allowed pr-24`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                      📍 Fijo
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                    📍 Plataforma exclusiva para negocios en Lurín, Lima
+                  </p>
                 </Field>
               </div>
             )}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Search, MapPin, Star } from 'lucide-react'
 import { profileService, type Profile } from '../../services/profile.service'
-import { useAuth } from '../../hooks/useAuth'
+
 
 const GRADIENTS: Record<string, string> = {
   'Restaurantes':         'from-orange-400 to-red-500',

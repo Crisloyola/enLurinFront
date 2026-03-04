@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-10">
           <div className="col-span-2 md:col-span-1">
             <p className="font-extrabold text-xl text-white mb-3">
-              ESLURIN<span className="text-orange-500">.PE</span>
+              ENLURIN<span className="text-orange-500">.PE</span>
             </p>
             <p className="text-sm leading-relaxed mb-4">
               Conectamos clientes con los mejores proveedores locales en Lurín.
