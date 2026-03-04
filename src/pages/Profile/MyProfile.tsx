@@ -5,6 +5,13 @@ import { useFetch } from '../../hooks/useFetch'
 import { useAuth } from '../../hooks/useAuth'
 import Loader from '../../components/common/Loader'
 
+/** Garantiza URL absoluta o retorna null si está vacía/inválida */
+function ensureUrl(url?: string | null): string | null {
+  const v = url?.trim()
+  if (!v) return null
+  return v.startsWith('http') ? v : `https://${v}`
+}
+
 export default function MyProfile() {
   const { user } = useAuth()
   const { data: profile, loading, error } = useFetch<Profile>(
@@ -19,17 +26,22 @@ export default function MyProfile() {
     INACTIVE: 'bg-red-100 text-red-600',
   }
 
-  const ensureUrl = (url?: string) => {
-    if (!url?.trim()) return null
-    return url.startsWith('http') ? url : `https://${url}`
-  }
+  // Construir lista de redes solo con las que tienen URL válida
+  const socialLinks = profile
+    ? [
+        { url: profile.instagram, label: 'Instagram', icon: <Instagram size={15} className="text-white" />, bg: 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)' },
+        { url: profile.facebook,  label: 'Facebook',  icon: <Facebook  size={15} className="text-white" />, bg: '#1877F2' },
+        { url: profile.youtube,   label: 'YouTube',   icon: <Youtube   size={15} className="text-white" />, bg: '#FF0000' },
+        { url: profile.tiktok,    label: 'TikTok',    icon: <Music2    size={15} className="text-white" />, bg: '#000000' },
+      ]
+        .map(item => ({ ...item, href: ensureUrl(item.url) }))
+        .filter(item => !!item.href) as { href: string; label: string; icon: React.ReactNode; bg: string }[]
+    : []
 
-  const socialLinks = profile ? [
-    profile.instagram && { href: ensureUrl(profile.instagram)!, icon: <Instagram size={15} className="text-white" />, bg: 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', label: 'Instagram' },
-    profile.facebook  && { href: ensureUrl(profile.facebook)!,  icon: <Facebook  size={15} className="text-white" />, bg: '#1877F2', label: 'Facebook' },
-    profile.youtube   && { href: ensureUrl(profile.youtube)!,   icon: <Youtube   size={15} className="text-white" />, bg: '#FF0000', label: 'YouTube' },
-    profile.tiktok    && { href: ensureUrl(profile.tiktok)!,    icon: <Music2    size={15} className="text-white" />, bg: '#000000', label: 'TikTok' },
-  ].filter(Boolean) as { href: string; icon: React.ReactNode; bg: string; label: string }[] : []
+  const whatsappNum = (profile?.whatsapp || profile?.phone || '').replace(/[^0-9]/g, '')
+  const whatsappUrl = whatsappNum
+    ? `https://wa.me/${whatsappNum}`
+    : '#'
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -92,10 +104,13 @@ export default function MyProfile() {
             )}
             {profile.phone && <InfoRow icon={<Phone size={14} />} text={profile.phone} />}
             {profile.whatsapp && (
-              <InfoRow icon={<MessageCircle size={14} />} text={`WhatsApp: ${profile.whatsapp}`} />
+              <a href={whatsappUrl} target="_blank" rel="noreferrer" className="flex items-start gap-2.5 text-sm text-gray-600 bg-gray-50 hover:bg-green-50 rounded-xl p-3 transition-colors">
+                <span className="text-green-500 mt-0.5 shrink-0"><MessageCircle size={14} /></span>
+                <span className="break-all">{profile.whatsapp}</span>
+              </a>
             )}
             {profile.schedule && <InfoRow icon={<Clock size={14} />} text={profile.schedule} />}
-            {profile.website && <InfoRow icon={<Globe size={14} />} text={profile.website} />}
+            {profile.website  && <InfoRow icon={<Globe size={14} />} text={profile.website} />}
             {profile.rating != null && (
               <InfoRow icon={<Star size={14} />}
                 text={`${profile.rating.toFixed(1)} ★ (${profile.reviewCount ?? 0} reseñas)`} />
@@ -105,17 +120,28 @@ export default function MyProfile() {
           {/* Redes sociales */}
           {socialLinks.length > 0 && (
             <div className="mb-5">
-              <p className="text-xs font-semibold text-gray-500 mb-2">Redes sociales</p>
+              <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Redes sociales</p>
               <div className="flex gap-2 flex-wrap">
                 {socialLinks.map(({ href, icon, bg, label }) => (
                   <a key={label} href={href} target="_blank" rel="noreferrer"
                     title={label}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-80"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-80 hover:scale-105"
                     style={{ background: bg }}>
                     {icon} {label}
                   </a>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Aviso si no tiene redes cargadas */}
+          {socialLinks.length === 0 && (
+            <div className="mb-5 bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm text-gray-400">No tienes redes sociales configuradas.</p>
+              <Link to="/mi-perfil/editar"
+                className="text-xs font-semibold text-orange-500 hover:underline shrink-0 ml-3">
+                Agregar →
+              </Link>
             </div>
           )}
 

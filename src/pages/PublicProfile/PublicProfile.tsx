@@ -10,10 +10,9 @@ import { profileService, type Profile } from '../../services/profile.service'
 import { useFetch } from '../../hooks/useFetch'
 import Loader from '../../components/common/Loader'
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
 interface MediaItem {
   id: number
-  type: string   // 'PHOTO' | 'VIDEO' | 'REEL'
+  type: string
   url: string
   thumbnail?: string
   title?: string
@@ -35,7 +34,6 @@ const GRADIENTS: Record<string, string> = {
   'default':              'from-orange-400 to-orange-600',
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function ensureUrl(url?: string): string | null {
   if (!url?.trim()) return null
   return url.startsWith('http') ? url : `https://${url}`
@@ -47,13 +45,10 @@ function getYoutubeThumbnail(url: string): string | null {
 }
 
 function getVideoEmbedUrl(url: string): string | null {
-  // YouTube watch
   const ytWatch = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/)
   if (ytWatch) return `https://www.youtube.com/embed/${ytWatch[1]}?autoplay=1`
-  // YouTube shorts
   const ytShort = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/)
   if (ytShort) return `https://www.youtube.com/embed/${ytShort[1]}?autoplay=1`
-  // youtu.be
   const ytBe = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
   if (ytBe) return `https://www.youtube.com/embed/${ytBe[1]}?autoplay=1`
   return null
@@ -74,22 +69,19 @@ function getVideoThumbnail(item: MediaItem): string {
   return ''
 }
 
-// ─── Lightbox de video ────────────────────────────────────────────────────────
 function VideoModal({ item, onClose }: { item: MediaItem; onClose: () => void }) {
   const embedUrl = getVideoEmbedUrl(item.url)
   const platform = getVideoPlatform(item.url)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
-      onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4" onClick={onClose}>
       <button onClick={onClose}
         className="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 z-10">
         <X size={24} />
       </button>
       <div className="w-full max-w-3xl" onClick={e => e.stopPropagation()}>
         {embedUrl ? (
-          <div className="relative w-full rounded-2xl overflow-hidden bg-black"
-            style={{ paddingBottom: '56.25%' }}>
+          <div className="relative w-full rounded-2xl overflow-hidden bg-black" style={{ paddingBottom: '56.25%' }}>
             <iframe
               src={embedUrl}
               className="absolute inset-0 w-full h-full"
@@ -99,7 +91,6 @@ function VideoModal({ item, onClose }: { item: MediaItem; onClose: () => void })
             />
           </div>
         ) : (
-          // Para TikTok/Facebook: abrir en nueva pestaña
           <div className="bg-white rounded-2xl p-8 text-center">
             <Play size={40} className="mx-auto text-orange-500 mb-4" />
             <p className="font-bold text-gray-900 mb-2">{item.title ?? 'Ver video'}</p>
@@ -120,7 +111,6 @@ function VideoModal({ item, onClose }: { item: MediaItem; onClose: () => void })
   )
 }
 
-// ─── Lightbox de foto ─────────────────────────────────────────────────────────
 function PhotoLightbox({ photos, index, onClose, onPrev, onNext }: {
   photos: MediaItem[]; index: number
   onClose: () => void; onPrev: () => void; onNext: () => void
@@ -153,18 +143,16 @@ function PhotoLightbox({ photos, index, onClose, onPrev, onNext }: {
   )
 }
 
-// ─── Galería (Fotos | Reels | Videos) ────────────────────────────────────────
 function MediaGallery({ media }: { media: MediaItem[] }) {
-  const [tab,          setTab]          = useState<'PHOTO' | 'REEL' | 'VIDEO'>('PHOTO')
-  const [photoIndex,   setPhotoIndex]   = useState<number | null>(null)
-  const [videoItem,    setVideoItem]    = useState<MediaItem | null>(null)
+  const [tab,        setTab]        = useState<'PHOTO' | 'REEL' | 'VIDEO'>('PHOTO')
+  const [photoIndex, setPhotoIndex] = useState<number | null>(null)
+  const [videoItem,  setVideoItem]  = useState<MediaItem | null>(null)
 
   const normalized = media.map(m => ({ ...m, type: String(m.type).toUpperCase() }))
   const photos  = normalized.filter(m => m.type === 'PHOTO')
   const reels   = normalized.filter(m => m.type === 'REEL')
   const videos  = normalized.filter(m => m.type === 'VIDEO')
 
-  // Mostrar sólo tabs con contenido
   const tabs = [
     photos.length  > 0 && { key: 'PHOTO' as const, label: 'Fotos',  count: photos.length,  icon: <ImageIcon size={13} /> },
     reels.length   > 0 && { key: 'REEL'  as const, label: 'Reels',  count: reels.length,   icon: <Play size={13} /> },
@@ -173,13 +161,11 @@ function MediaGallery({ media }: { media: MediaItem[] }) {
 
   if (tabs.length === 0) return null
 
-  // Asegurar que el tab activo tenga contenido
   const activeTab = tabs.find(t => t.key === tab) ? tab : tabs[0].key
   const currentItems = activeTab === 'PHOTO' ? photos : activeTab === 'REEL' ? reels : videos
 
   return (
     <div className="mt-1">
-      {/* Tabs estilo imagen de referencia */}
       <div className="flex gap-1 mb-4">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
@@ -196,7 +182,6 @@ function MediaGallery({ media }: { media: MediaItem[] }) {
         ))}
       </div>
 
-      {/* Contenido */}
       {activeTab === 'PHOTO' && (
         <div className="grid grid-cols-3 gap-1 rounded-xl overflow-hidden">
           {photos.map((item, idx) => (
@@ -212,30 +197,25 @@ function MediaGallery({ media }: { media: MediaItem[] }) {
       {(activeTab === 'REEL' || activeTab === 'VIDEO') && (
         <div className="grid grid-cols-3 gap-2">
           {currentItems.map(item => {
-            const thumb     = getVideoThumbnail(item)
-            const platform  = getVideoPlatform(item.url)
+            const thumb    = getVideoThumbnail(item)
+            const platform = getVideoPlatform(item.url)
             return (
               <button key={item.id} onClick={() => setVideoItem(item)}
                 className="relative aspect-[9/16] rounded-xl overflow-hidden group bg-gray-900 flex flex-col">
-                {/* Thumbnail */}
                 {thumb ? (
                   <img src={thumb} alt={item.title ?? ''} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-80" />
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-b from-gray-800 to-gray-900" />
                 )}
-                {/* Overlay */}
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
-                {/* Play button grande — igual que referencia */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                     <Play size={20} className="text-white fill-white ml-0.5" />
                   </div>
                 </div>
-                {/* Badge plataforma */}
                 <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
                   {platform}
                 </div>
-                {/* Título si existe */}
                 {item.title && (
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
                     <p className="text-white text-[10px] font-medium line-clamp-2 text-left">{item.title}</p>
@@ -247,7 +227,6 @@ function MediaGallery({ media }: { media: MediaItem[] }) {
         </div>
       )}
 
-      {/* Modales */}
       {photoIndex !== null && (
         <PhotoLightbox photos={photos} index={photoIndex} onClose={() => setPhotoIndex(null)}
           onPrev={() => setPhotoIndex(i => i !== null ? (i - 1 + photos.length) % photos.length : null)}
@@ -259,7 +238,6 @@ function MediaGallery({ media }: { media: MediaItem[] }) {
   )
 }
 
-// ─── Mapa embebido de Google Maps ─────────────────────────────────────────────
 function EmbeddedMap({ address, district, latitude, longitude }: {
   address?: string; district?: string; latitude?: number; longitude?: number
 }) {
@@ -284,8 +262,6 @@ function EmbeddedMap({ address, district, latitude, longitude }: {
           <Navigation size={12} /> Abrir en Maps
         </a>
       </div>
-
-      {/* Mapa real de Google Maps embebido */}
       <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm" style={{ height: 320 }}>
         <iframe
           title="Ubicación del negocio"
@@ -302,16 +278,19 @@ function EmbeddedMap({ address, district, latitude, longitude }: {
   )
 }
 
-// ─── Redes sociales ───────────────────────────────────────────────────────────
 function SocialButtons({ instagram, facebook, youtube, tiktok }: {
   instagram?: string; facebook?: string; youtube?: string; tiktok?: string
 }) {
-  const buttons = [
-    instagram && { href: ensureUrl(instagram)!, label: 'Instagram', icon: <Instagram size={17} className="text-white" />, bg: 'linear-gradient(135deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)' },
-    facebook  && { href: ensureUrl(facebook)!,  label: 'Facebook',  icon: <Facebook  size={17} className="text-white" />, bg: '#1877F2' },
-    youtube   && { href: ensureUrl(youtube)!,   label: 'YouTube',   icon: <Youtube   size={17} className="text-white" />, bg: '#FF0000' },
-    tiktok    && { href: ensureUrl(tiktok)!,    label: 'TikTok',    icon: <Music2    size={17} className="text-white" />, bg: '#000000' },
-  ].filter(Boolean) as { href: string; label: string; icon: React.ReactNode; bg: string }[]
+  // Construir lista solo con los que tienen URL válida
+  const raw = [
+    { url: instagram, label: 'Instagram', icon: <Instagram size={17} className="text-white" />, bg: 'linear-gradient(135deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)' },
+    { url: facebook,  label: 'Facebook',  icon: <Facebook  size={17} className="text-white" />, bg: '#1877F2' },
+    { url: youtube,   label: 'YouTube',   icon: <Youtube   size={17} className="text-white" />, bg: '#FF0000' },
+    { url: tiktok,    label: 'TikTok',    icon: <Music2    size={17} className="text-white" />, bg: '#000000' },
+  ]
+  const buttons = raw
+    .map(item => ({ ...item, href: ensureUrl(item.url) }))
+    .filter(item => !!item.href) as { href: string; label: string; icon: React.ReactNode; bg: string }[]
 
   if (buttons.length === 0) return null
 
@@ -328,7 +307,6 @@ function SocialButtons({ instagram, facebook, youtube, tiktok }: {
   )
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
 export default function PublicProfile() {
   const { slug } = useParams<{ slug: string }>()
 
@@ -352,24 +330,23 @@ export default function PublicProfile() {
 
   const gradient = GRADIENTS[p.category] ?? GRADIENTS.default
 
-  // WhatsApp real
   const whatsappNum = (p.whatsapp || p.phone || '').replace(/[^0-9]/g, '')
   const whatsappMsg = encodeURIComponent(`Hola, vi tu perfil en Enlurin.pe y me interesa ${p.businessName}. ¿Podría darme más información?`)
   const whatsappUrl = whatsappNum ? `https://wa.me/${whatsappNum}?text=${whatsappMsg}` : '#'
 
-  // Maps URL
   const mapsUrl = p.latitude && p.longitude
     ? `https://www.google.com/maps?q=${p.latitude},${p.longitude}`
     : `https://www.google.com/maps/search/${encodeURIComponent(`${p.address ?? ''} ${p.district ?? ''} Lurín Lima`.trim())}`
 
-  // Media — combinar y deduplicar
   const allMedia: MediaItem[] = [
     ...(p.mediaItems ?? []) as MediaItem[],
     ...(mediaRaw ?? []),
   ].filter((m, idx, arr) => arr.findIndex(x => x.id === m.id) === idx)
 
-  // Horario parseado (puede venir como "Lun-Sáb 9am-6pm / Dom CERRADO")
-  const scheduleLines = p.schedule?.split('/').map(s => s.trim()).filter(Boolean) ?? []
+  // ── Horario: soporta separadores / o | o salto de línea ──────────────────
+  const scheduleLines = p.schedule
+    ? p.schedule.split(/[\/|\n]/).map(s => s.trim()).filter(Boolean)
+    : []
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -380,7 +357,7 @@ export default function PublicProfile() {
 
       <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
 
-        {/* ── Banner ─────────────────────────────────── */}
+        {/* Banner */}
         <div className={`relative h-52 bg-gradient-to-br ${gradient} overflow-hidden`}>
           {p.bannerUrl && <img src={p.bannerUrl} alt="banner" className="absolute inset-0 w-full h-full object-cover" />}
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent" />
@@ -388,7 +365,7 @@ export default function PublicProfile() {
 
         <div className="px-5">
 
-          {/* ── Logo + Redes ────────────────────────── */}
+          {/* Logo + Redes */}
           <div className="relative -mt-8 flex items-end justify-between mb-3">
             <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-white flex items-center justify-center shrink-0">
               {p.logoUrl
@@ -401,7 +378,7 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          {/* ── Nombre + badges ─────────────────────── */}
+          {/* Nombre + badges */}
           <div className="mb-3">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-0.5 rounded-full">{p.category}</span>
@@ -419,7 +396,7 @@ export default function PublicProfile() {
             )}
           </div>
 
-          {/* ── 3 botones de acción ──────────────────── */}
+          {/* 3 botones de acción */}
           <div className="grid grid-cols-3 gap-2.5 mb-5">
             <a href={p.phone ? `tel:${p.phone}` : '#'}
               className="flex flex-col items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white py-3.5 rounded-2xl transition-all active:scale-95 shadow-sm">
@@ -439,29 +416,27 @@ export default function PublicProfile() {
             </a>
           </div>
 
-          {/* ── Descripción ──────────────────────────── */}
+          {/* Descripción */}
           {p.description && (
             <p className="text-gray-600 text-sm leading-relaxed pb-5 border-b border-gray-100 mb-5">
               {p.description}
             </p>
           )}
 
-          {/* ── Galería ──────────────────────────────── */}
+          {/* Galería */}
           {allMedia.length > 0 && (
             <div className="mb-6">
               <MediaGallery media={allMedia} />
             </div>
           )}
 
-          {/* ── Sección ENCUÉNTRANOS EN (igual a referencia) ─ */}
+          {/* Sección ENCUÉNTRANOS EN */}
           <div className="bg-gray-50 rounded-2xl overflow-hidden mb-5 border border-gray-100">
-            {/* Header */}
             <div className="bg-gray-900 text-white px-5 py-3 flex items-center gap-2">
               <MapPin size={15} className="text-orange-400" />
               <span className="font-bold text-sm tracking-wide uppercase">Encuéntranos en:</span>
             </div>
 
-            {/* Info row — 3 columnas igual a referencia */}
             <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
               {/* Dirección */}
               <div className="px-5 py-4">
@@ -487,31 +462,27 @@ export default function PublicProfile() {
                 )}
               </div>
 
-              {/* Horarios */}
+              {/* Horarios — CORREGIDO */}
               <div className="px-5 py-4">
                 <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-2">Horarios de Atención</p>
                 {scheduleLines.length > 0 ? (
-                  scheduleLines.map((line, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-sm text-gray-700 mb-1">
-                      <Clock size={13} className="text-gray-400 shrink-0" />
-                      <span>{line}</span>
-                    </div>
-                  ))
-                ) : p.schedule ? (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                    <Clock size={13} className="text-gray-400 shrink-0" />
-                    <span>{p.schedule}</span>
+                  <div className="space-y-1.5">
+                    {scheduleLines.map((line, i) => (
+                      <div key={i} className="flex items-start gap-1.5 text-sm text-gray-700">
+                        <Clock size={13} className="text-gray-400 shrink-0 mt-0.5" />
+                        <span>{line}</span>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-400 italic">No especificado</p>
                 )}
               </div>
 
-              {/* Medios de pago (placeholder — puedes agregar campo al backend) */}
+              {/* Medios de pago */}
               <div className="px-5 py-4">
                 <p className="text-xs font-bold text-orange-500 uppercase tracking-wide mb-2">Medios de Pago</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {/* Iconos de pago comunes — se pueden hacer dinámicos con un campo del backend */}
                   {['Efectivo', 'Visa', 'Mastercard', 'Yape', 'Plin'].map(m => (
                     <span key={m} className="text-xs bg-white border border-gray-200 text-gray-600 font-semibold px-2 py-1 rounded-lg shadow-sm">
                       {m}
@@ -521,7 +492,7 @@ export default function PublicProfile() {
               </div>
             </div>
 
-            {/* Mapa real embebido */}
+            {/* Mapa */}
             <div className="px-4 pb-4">
               <EmbeddedMap
                 address={p.address}
@@ -532,7 +503,7 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          {/* ── Footer ───────────────────────────────── */}
+          {/* Footer */}
           <div className="mb-5 pt-2 flex items-center justify-between text-xs text-gray-400">
             <span className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-green-500" />

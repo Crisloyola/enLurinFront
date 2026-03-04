@@ -45,16 +45,16 @@ export interface ProfileForm {
   description:  string
   phone:        string
   address:      string
-  website?:     string
-  whatsapp?:    string
+  website?:     string | null
+  whatsapp?:    string | null
   latitude?:    number
   longitude?:   number
-  schedule?:    string
-  instagram?:   string
-  facebook?:    string
-  youtube?:     string
-  tiktok?:      string
-  paymentMethods?: string
+  schedule?:    string | null
+  instagram?:   string | null
+  facebook?:    string | null
+  youtube?:     string | null
+  tiktok?:      string | null
+  paymentMethods?: string | null
 }
 
 export const profileService = {
@@ -92,6 +92,28 @@ export const profileService = {
   updateMe: async (form: ProfileForm): Promise<Profile> => {
     const { data } = await api.put('/profiles/me', form)
     return data
+  },
+
+  /**
+   * Actualiza solo los campos de redes sociales por separado.
+   * Útil si el backend tiene un endpoint dedicado o si PUT /profiles/me
+   * no persiste estos campos.
+   */
+  updateSocial: async (id: number, social: {
+    instagram?: string | null
+    facebook?:  string | null
+    youtube?:   string | null
+    tiktok?:    string | null
+  }): Promise<Profile> => {
+    // Intentar PATCH primero (más semántico para updates parciales)
+    try {
+      const { data } = await api.patch(`/profiles/${id}/social`, social)
+      return data
+    } catch {
+      // Si no existe el endpoint PATCH, reintentar con PUT al perfil completo
+      // (el llamador ya habrá hecho updateMe, esto es fallback)
+      throw new Error('Endpoint PATCH /social no disponible')
+    }
   },
 
   update: async (id: number, form: ProfileForm): Promise<Profile> => {
@@ -137,7 +159,6 @@ export const profileService = {
     return data
   },
 
-  // Guardar link de video (YouTube, TikTok, Facebook, Instagram)
   addVideoLink: async (url: string, type: 'VIDEO' | 'REEL', title?: string): Promise<MediaItem> => {
     const { data } = await api.post('/profiles/me/media/link', { url, type, title })
     return data

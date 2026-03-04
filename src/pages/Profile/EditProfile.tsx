@@ -43,8 +43,11 @@ const PAYMENT_METHODS = [
   'Efectivo', 'Visa', 'Mastercard', 'Yape', 'Plin', 'BCP', 'Interbank', 'BBVA', 'Transferencia'
 ]
 
+// Distrito fijo — la plataforma solo opera en Lurín
+const FIXED_DISTRICT = 'Lurín'
+
 const EMPTY: ProfileForm = {
-  businessName: '', category: '', district: '',
+  businessName: '', category: '', district: FIXED_DISTRICT,
   description: '', phone: '', address: '',
   whatsapp: '', latitude: undefined, longitude: undefined,
   schedule: '', instagram: '', facebook: '', youtube: '', tiktok: '',
@@ -57,7 +60,6 @@ function toSlug(text: string): string {
 
 // ─── Helpers de video ─────────────────────────────────────────────────────────
 function getVideoThumbnail(url: string): string | null {
-  // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
   if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/mqdefault.jpg`
   return null
@@ -167,11 +169,11 @@ function VideoLinksManager({ links, onAdd, onRemove, onUpdate }: {
   onUpdate: (id: string, field: 'url' | 'title', value: string) => void
 }) {
   const PLATFORM_COLORS: Record<string, string> = {
-    YouTube: 'bg-red-100 text-red-700',
-    TikTok:  'bg-gray-100 text-gray-800',
-    Facebook:'bg-blue-100 text-blue-700',
+    YouTube:  'bg-red-100 text-red-700',
+    TikTok:   'bg-gray-100 text-gray-800',
+    Facebook: 'bg-blue-100 text-blue-700',
     Instagram:'bg-pink-100 text-pink-700',
-    Video:   'bg-gray-100 text-gray-600',
+    Video:    'bg-gray-100 text-gray-600',
   }
 
   return (
@@ -328,19 +330,14 @@ export default function EditProfile({ isNew = false }: Props) {
   const [logoPreview,   setLogoPreview]   = useState<string | null>(null)
   const [bannerPreview, setBannerPreview] = useState<string | null>(null)
 
-  // Fotos
   const [newPhotos,        setNewPhotos]        = useState<PhotoPreview[]>([])
   const [existingPhotos,   setExistingPhotos]   = useState<ExistingPhoto[]>([])
   const [deletedPhotoIds,  setDeletedPhotoIds]  = useState<number[]>([])
-
-  // Links de video (reels / videos de YouTube, TikTok, Facebook)
-  const [videoLinks, setVideoLinks] = useState<VideoLink[]>([])
-
-  // Medios de pago seleccionados
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([])
+  const [videoLinks,       setVideoLinks]       = useState<VideoLink[]>([])
+  const [paymentMethods,   setPaymentMethods]   = useState<string[]>([])
 
   const [sections, setSections] = useState({
-    basic: true, contact: true, location: false, social: false, media: false, payment: false,
+    basic: true, contact: true, location: false, social: true, media: false, payment: false,
   })
 
   const logoRef   = useRef<HTMLInputElement>(null)
@@ -357,7 +354,8 @@ export default function EditProfile({ isNew = false }: Props) {
     setForm({
       businessName: existing.businessName ?? '',
       category:     existing.category     ?? '',
-      district:     existing.district     ?? '',
+      // Siempre forzar Lurín aunque venga otro valor del backend
+      district:     FIXED_DISTRICT,
       description:  existing.description  ?? '',
       phone:        existing.phone        ?? '',
       address:      existing.address      ?? '',
@@ -373,7 +371,6 @@ export default function EditProfile({ isNew = false }: Props) {
     if (existing.logoUrl)   setLogoPreview(existing.logoUrl)
     if (existing.bannerUrl) setBannerPreview(existing.bannerUrl)
 
-    // Cargar media existente — separar fotos de videos
     ;(async () => {
       try {
         const media = existing.mediaItems?.length
@@ -384,7 +381,6 @@ export default function EditProfile({ isNew = false }: Props) {
         const videos = (media as any[]).filter(m => m.type === 'VIDEO' || m.type === 'REEL')
 
         setExistingPhotos(photos as ExistingPhoto[])
-        // Convertir videos guardados como links
         if (videos.length > 0) {
           setVideoLinks(videos.map((v: any) => ({
             id:    `ex-${v.id}`,
@@ -406,7 +402,11 @@ export default function EditProfile({ isNew = false }: Props) {
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  ) => {
+    // Nunca permitir cambiar el distrito
+    if (e.target.name === 'district') return
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
 
   const toggleSection = (k: keyof typeof sections) =>
     setSections(prev => ({ ...prev, [k]: !prev[k] }))
@@ -416,7 +416,6 @@ export default function EditProfile({ isNew = false }: Props) {
       prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
     )
 
-  // Logo / Banner
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return
     setLogoFile(f); setLogoPreview(URL.createObjectURL(f))
@@ -426,7 +425,6 @@ export default function EditProfile({ isNew = false }: Props) {
     setBannerFile(f); setBannerPreview(URL.createObjectURL(f))
   }
 
-  // Fotos
   const handleAddPhotos = (files: FileList) =>
     setNewPhotos(prev => [...prev, ...Array.from(files).map(file => ({
       id: `${Date.now()}-${Math.random()}`, file,
@@ -440,7 +438,6 @@ export default function EditProfile({ isNew = false }: Props) {
   const handleUpdatePhotoTitle = (id: string, title: string) =>
     setNewPhotos(prev => prev.map(p => p.id === id ? { ...p, title } : p))
 
-  // Video links
   const handleAddVideoLink = () =>
     setVideoLinks(prev => [...prev, { id: `${Date.now()}`, url: '', type: 'VIDEO', title: '' }])
   const handleRemoveVideoLink = (id: string) =>
@@ -453,7 +450,6 @@ export default function EditProfile({ isNew = false }: Props) {
       return updated
     }))
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(''); setUploadLog([]); setLoading(true)
@@ -461,35 +457,41 @@ export default function EditProfile({ isNew = false }: Props) {
     try {
       const payload = {
         ...form,
+        district:     FIXED_DISTRICT,
+        districtSlug: 'lurin',
         categorySlug: toSlug(form.category),
-        districtSlug: toSlug(form.district),
+        // Trimear strings; si están vacíos mandar null para que el backend los limpie
+        instagram: form.instagram?.trim() || null,
+        facebook:  form.facebook?.trim()  || null,
+        youtube:   form.youtube?.trim()   || null,
+        tiktok:    form.tiktok?.trim()    || null,
+        whatsapp:  form.whatsapp?.trim()  || null,
+        schedule:  form.schedule?.trim()  || null,
       }
 
-      // 1. Guardar perfil
+      // DEBUG: ver exactamente qué se manda al backend
+      console.log('[EditProfile] payload a guardar:', JSON.stringify(payload, null, 2))
+
       const saved = isNew
         ? await profileService.create(payload)
         : await profileService.updateMe(payload)
       const id = saved.id
       if (!id) throw new Error('No se pudo obtener el ID del perfil')
 
-      // 2. Logo
       if (logoFile) {
         try { await profileService.uploadLogo(id, logoFile); setUploadLog(l => [...l, '✓ Logo subido']) }
         catch { setUploadLog(l => [...l, '⚠️ Logo no se pudo subir']) }
       }
 
-      // 3. Banner
       if (bannerFile) {
         try { await profileService.uploadBanner(bannerFile); setUploadLog(l => [...l, '✓ Banner subido']) }
         catch { setUploadLog(l => [...l, '⚠️ Banner no se pudo subir']) }
       }
 
-      // 4. Eliminar fotos borradas
       for (const photoId of deletedPhotoIds) {
         try { await profileService.deleteMedia(photoId) } catch { /* ignorar */ }
       }
 
-      // 5. Subir nuevas fotos
       if (newPhotos.length > 0) {
         setUploadLog(l => [...l, `Subiendo ${newPhotos.length} foto(s)...`])
         let ok = 0
@@ -502,14 +504,11 @@ export default function EditProfile({ isNew = false }: Props) {
         setUploadLog(l => [...l, `✓ ${ok}/${newPhotos.length} fotos subidas`])
       }
 
-      // 6. Guardar links de video como media con URL
-      // Filtramos los que tienen URL válida
       const validVideoLinks = videoLinks.filter(v => v.url.trim().startsWith('http'))
       if (validVideoLinks.length > 0) {
         setUploadLog(l => [...l, `Guardando ${validVideoLinks.length} link(s) de video...`])
         for (const vlink of validVideoLinks) {
           try {
-            // Guardamos el link de video usando un endpoint especial o como media con URL
             await profileService.addVideoLink?.(vlink.url, vlink.type, vlink.title || undefined)
           } catch { /* algunos pueden fallar si ya existen */ }
         }
@@ -620,8 +619,17 @@ export default function EditProfile({ isNew = false }: Props) {
                     className={`${inputCls} resize-none`} />
                 </Field>
                 <Field label="Horario de atención" icon={<Store size={14} />}>
-                  <input name="schedule" value={form.schedule || ''} onChange={handleChange}
-                    placeholder="Ej: Lun-Sáb 9am-6pm / Dom CERRADO" className={inputCls} />
+                  <input
+                    name="schedule"
+                    value={form.schedule || ''}
+                    onChange={handleChange}
+                    placeholder="Ej: Lun-Sáb 9am-6pm / Dom CERRADO"
+                    className={inputCls}
+                  />
+                  <p className="text-xs text-gray-400">
+                    Separa los horarios con <strong>/</strong> para mostrarlos en líneas separadas.
+                    Ej: <em>Lun-Vie 8am-6pm / Sáb 9am-2pm / Dom CERRADO</em>
+                  </p>
                 </Field>
               </div>
             )}
@@ -644,9 +652,21 @@ export default function EditProfile({ isNew = false }: Props) {
                     <p className="text-xs text-gray-400">Solo dígitos con código país: 51900000000</p>
                   </Field>
                 </div>
-                <Field label="Distrito *" icon={<MapPin size={14} />}>
-                  <input name="district" required value={form.district} onChange={handleChange}
-                    placeholder="Lurín" className={inputCls} />
+
+                {/* Distrito bloqueado a Lurín */}
+                <Field label="Distrito" icon={<MapPin size={14} />}>
+                  <div className="relative">
+                    <input
+                      name="district"
+                      value={FIXED_DISTRICT}
+                      readOnly
+                      className={`${inputCls} bg-orange-50 border-orange-200 text-orange-700 font-semibold cursor-not-allowed`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                      Fijo
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">La plataforma opera exclusivamente en Lurín.</p>
                 </Field>
               </div>
             )}
@@ -696,13 +716,12 @@ export default function EditProfile({ isNew = false }: Props) {
             )}
           </div>
 
-          {/* Galería (fotos + links de video) */}
+          {/* Galería */}
           <div>
             <SectionHeader title="Fotos y Videos" icon={<ImageIcon size={16} />}
               isOpen={sections.media} onToggle={() => toggleSection('media')} badge={totalMedia} />
             {sections.media && (
               <div className="pt-4 space-y-5">
-                {/* Fotos */}
                 <div>
                   <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                     <ImageIcon size={13} className="text-orange-500" /> Fotos del negocio
@@ -713,7 +732,6 @@ export default function EditProfile({ isNew = false }: Props) {
                     onRemoveExisting={handleRemoveExistingPhoto} onUpdateTitle={handleUpdatePhotoTitle}
                   />
                 </div>
-
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                     <Film size={13} className="text-orange-500" /> Reels y Videos (YouTube, TikTok, Facebook)
