@@ -4,6 +4,7 @@ import Loader from '../components/common/Loader'
 import MainLayout from '../components/layout/MainLayout'
 import Home            from '../pages/Home/Home'
 import Explorar        from '../pages/Explorar/Explorar'
+import CategoryPage    from '../pages/Category/CategoryPage'
 import Login           from '../pages/Auth/Login'
 import Register        from '../pages/Auth/Register'
 import MyProfile       from '../pages/Profile/MyProfile'
@@ -38,9 +39,10 @@ export default function AppRouter() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        <Route index                  element={<Home />} />
-        <Route path="/explorar"       element={<Explorar />} />
-        <Route path="/perfil/:slug"   element={<PublicProfile />} />
+        <Route index                       element={<Home />} />
+        <Route path="/explorar"            element={<Explorar />} />
+        <Route path="/categoria/:category" element={<CategoryPage />} />
+        <Route path="/perfil/:slug"        element={<PublicProfile />} />
 
         <Route path="/mi-perfil"        element={<PrivateRoute><MyProfile /></PrivateRoute>} />
         <Route path="/mi-perfil/editar" element={<PrivateRoute><EditProfile /></PrivateRoute>} />

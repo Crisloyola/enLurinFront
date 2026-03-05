@@ -333,7 +333,7 @@ function CategoriesGrid() {
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
           {CATS.map(cat => (
             <button key={cat.name}
-                    onClick={() => navigate(`/explorar?category=${encodeURIComponent(cat.name)}`)}
+                    onClick={() => navigate(`/categoria/${encodeURIComponent(cat.name)}`)}
                     className="bg-white rounded-2xl shadow-sm hover:shadow-md text-center p-4 group transition-all">
               <div className={`w-12 h-12 mx-auto rounded-xl ${cat.color} flex items-center justify-center text-2xl mb-2 group-hover:scale-110 transition-transform`}>
                 {cat.emoji}
