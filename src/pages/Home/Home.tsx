@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Search, MapPin, Star } from 'lucide-react'
 import { profileService, type Profile } from '../../services/profile.service'
 
-
 const GRADIENTS: Record<string, string> = {
   'Restaurantes':         'from-orange-400 to-red-500',
   'Médicos':              'from-blue-400 to-cyan-500',
@@ -19,8 +18,146 @@ const GRADIENTS: Record<string, string> = {
   'Farmacias':            'from-red-400 to-rose-500',
 }
 
-// ── Hero ──────────────────────────────────────────────────────────────────
-function Hero() {
+// ── Rotador de perfiles en el Hero ────────────────────────────────────────────
+function HeroProfileRotator({ profiles }: { profiles: Profile[] }) {
+  const [index, setIndex]       = useState(0)
+  const [visible, setVisible]   = useState(true)
+
+  useEffect(() => {
+    if (profiles.length < 2) return
+    const timer = setInterval(() => {
+      // fade out → cambiar → fade in
+      setVisible(false)
+      setTimeout(() => {
+        setIndex(prev => (prev + 1) % profiles.length)
+        setVisible(true)
+      }, 350)
+    }, 3800)
+    return () => clearInterval(timer)
+  }, [profiles.length])
+
+  // Placeholder si aún no hay perfiles
+  if (profiles.length === 0) {
+    return (
+      <div className="relative">
+        <div className="w-72 h-72 rounded-3xl bg-orange-600/40 flex items-center justify-center text-8xl">👩‍💼</div>
+        <div className="absolute top-4 -right-4 bg-white rounded-xl shadow-lg px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-green-500" /> ESLURIN.PE — Servicios confiables ✅
+        </div>
+        <div className="absolute -bottom-2 -left-4 bg-white rounded-xl shadow-lg px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-orange-500" /> Profesionales listos para ayudarte 🚀
+        </div>
+      </div>
+    )
+  }
+
+  const p = profiles[index]
+  const gradient = GRADIENTS[p.category] ?? 'from-orange-500 to-orange-700'
+
+  return (
+    <div className="relative w-72">
+      {/* Tarjeta con fade */}
+      <div style={{
+        transition: 'opacity 350ms ease, transform 350ms ease',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.97)',
+      }}>
+        <Link
+          to={`/perfil/${p.slug}`}
+          className="block rounded-3xl overflow-hidden bg-white"
+          style={{ boxShadow: '0 20px 50px rgba(0,0,0,0.22)' }}
+        >
+          {/* Cover + Logo superpuesto */}
+          <div className={`relative h-36 bg-gradient-to-br ${gradient} overflow-visible`}>
+            {/* Banner */}
+            {p.bannerUrl
+              ? <img src={p.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover rounded-t-3xl" />
+              : null
+            }
+            {/* Overlay suave solo si hay banner */}
+            {p.bannerUrl && (
+              <div className="absolute inset-0 bg-black/10 rounded-t-3xl" />
+            )}
+
+            {p.featured && (
+              <span className="absolute top-2.5 right-2.5 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
+                ⭐ Destacado
+              </span>
+            )}
+
+            {/* Logo flotante centrado, sobresale del banner */}
+            <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-white border-[3px] border-white shadow-lg overflow-hidden flex items-center justify-center z-10">
+              {p.logoUrl
+                ? <img src={p.logoUrl} alt={p.businessName} className="w-full h-full object-cover" />
+                : <span className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold text-xl`}>
+                    {p.businessName.charAt(0)}
+                  </span>
+              }
+            </div>
+          </div>
+
+          {/* Info — espacio extra arriba para el logo */}
+          <div className="pt-10 px-4 pb-4 text-center">
+            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-0.5">{p.category}</p>
+            <h3 className="font-bold text-gray-900 text-sm leading-tight truncate mb-1">{p.businessName}</h3>
+            <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed">{p.description}</p>
+            <div className="flex items-center justify-center gap-3 border-t border-gray-50 pt-2">
+              {p.rating
+                ? <span className="flex items-center gap-1 text-xs font-bold text-gray-700">
+                    <Star size={11} className="fill-yellow-400 text-yellow-400" />
+                    {p.rating.toFixed(1)}
+                  </span>
+                : null
+              }
+              <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                <MapPin size={10} /> {p.district ?? 'Lurín'}
+              </span>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Indicadores */}
+      {profiles.length > 1 && (
+        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {profiles.slice(0, 7).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setVisible(false); setTimeout(() => { setIndex(i); setVisible(true) }, 200) }}
+              style={{
+                width: i === index ? 18 : 6,
+                height: 6,
+                borderRadius: 9999,
+                background: i === index ? '#fff' : 'rgba(255,255,255,0.35)',
+                transition: 'all 0.3s ease',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Badge superior derecha */}
+      <div className="absolute top-3 -right-5 bg-white rounded-xl shadow-xl px-3 py-2 text-xs font-semibold flex items-center gap-2 z-10"
+           style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.14)' }}>
+        <span className="w-2 h-2 rounded-full bg-green-500" style={{ boxShadow: '0 0 0 3px #dcfce7' }} />
+        ESLURIN.PE — Servicios confiables ✅
+      </div>
+
+      {/* Badge inferior izquierda */}
+      <div className="absolute -bottom-2 -left-5 bg-white rounded-xl shadow-xl px-3 py-2 text-xs font-semibold flex items-center gap-2 z-10"
+           style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.14)' }}>
+        <span className="w-2 h-2 rounded-full bg-orange-500" />
+        {profiles.length}+ profesionales en Lurín 🚀
+      </div>
+    </div>
+  )
+}
+
+// ── Hero ──────────────────────────────────────────────────────────────────────
+function Hero({ profiles }: { profiles: Profile[] }) {
   const [query, setQuery]       = useState('')
   const [district, setDistrict] = useState('')
   const navigate = useNavigate()
@@ -65,16 +202,10 @@ function Hero() {
               </button>
             </form>
           </div>
-          <div className="hidden md:flex justify-end">
-            <div className="relative">
-              <div className="w-72 h-72 rounded-3xl bg-orange-600/40 flex items-center justify-center text-8xl">👩‍💼</div>
-              <div className="absolute top-4 -right-4 bg-white rounded-xl shadow-lg px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500" /> ESLURIN.PE — Servicios confiables ✅
-              </div>
-              <div className="absolute -bottom-2 -left-4 bg-white rounded-xl shadow-lg px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-orange-500" /> Profesionales listos para ayudarte 🚀
-              </div>
-            </div>
+
+          {/* Rotador de perfiles reales */}
+          <div className="hidden md:flex justify-end pr-10 pb-8">
+            <HeroProfileRotator profiles={profiles} />
           </div>
         </div>
       </div>
@@ -82,7 +213,7 @@ function Hero() {
   )
 }
 
-// ── Profile Card ──────────────────────────────────────────────────────────
+// ── Profile Card ──────────────────────────────────────────────────────────────
 function ProfileCard({ p }: { p: Profile }) {
   const gradient = GRADIENTS[p.category] ?? 'from-orange-400 to-orange-600'
   const href = `/perfil/${p.slug}`
@@ -118,26 +249,11 @@ function ProfileCard({ p }: { p: Profile }) {
   )
 }
 
-// ── Featured Section ──────────────────────────────────────────────────────
+// ── Featured Section ──────────────────────────────────────────────────────────
 const TABS = ['Todos', 'Restaurantes', 'Médicos', 'Abogados', 'Belleza & Spa', 'Eventos', 'Otros']
 
-function FeaturedSection() {
-  const [profiles, setProfiles]   = useState<Profile[]>([])
-  const [loading, setLoading]     = useState(true)
+function FeaturedSection({ profiles, loading }: { profiles: Profile[]; loading: boolean }) {
   const [activeTab, setActiveTab] = useState('Todos')
-
-  useEffect(() => {
-    profileService.getAllActive()
-      .then(data => {
-        console.log('perfiles activos:', data)
-        setProfiles(data)
-      })
-      .catch(err => {
-        console.error('error al cargar perfiles activos:', err)
-        setProfiles([])
-      })
-      .finally(() => setLoading(false))
-  }, [])
 
   const filtered = activeTab === 'Todos'
     ? profiles.slice(0, 6)
@@ -192,7 +308,7 @@ function FeaturedSection() {
   )
 }
 
-// ── Categories Grid ───────────────────────────────────────────────────────
+// ── Categories Grid ───────────────────────────────────────────────────────────
 const CATS = [
   { name: 'Médicos',              emoji: '🏥', color: 'bg-blue-50   text-blue-600'   },
   { name: 'Restaurantes',         emoji: '🍽️', color: 'bg-orange-50 text-orange-600' },
@@ -231,7 +347,7 @@ function CategoriesGrid() {
   )
 }
 
-// ── CTAs ──────────────────────────────────────────────────────────────────
+// ── CTAs ──────────────────────────────────────────────────────────────────────
 function CTABanners() {
   return (
     <section className="max-w-7xl mx-auto px-4 py-10">
@@ -271,7 +387,7 @@ function CTABanners() {
   )
 }
 
-// ── Stats ─────────────────────────────────────────────────────────────────
+// ── Stats ─────────────────────────────────────────────────────────────────────
 function StatsBar() {
   const stats = [
     { value: '50+',    label: 'Empresas Registradas' },
@@ -293,11 +409,26 @@ function StatsBar() {
   )
 }
 
+// ── Home ──────────────────────────────────────────────────────────────────────
 export default function Home() {
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    profileService.getAllActive()
+      .then(data => {
+        // Mezclar aleatoriamente para que el rotador sea variado cada visita
+        const shuffled = [...data].sort(() => Math.random() - 0.5)
+        setProfiles(shuffled)
+      })
+      .catch(() => setProfiles([]))
+      .finally(() => setLoading(false))
+  }, [])
+
   return (
     <>
-      <Hero />
-      <FeaturedSection />
+      <Hero profiles={profiles} />
+      <FeaturedSection profiles={profiles} loading={loading} />
       <CategoriesGrid />
       <CTABanners />
       <StatsBar />
