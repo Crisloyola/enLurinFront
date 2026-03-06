@@ -12,12 +12,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://enlurinbackend-production.up.railway.app',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/uploads': {                        // ← AGREGAR ESTO
-        target: 'http://localhost:8080',
+      '/uploads': {
+        target: 'https://enlurinbackend-production.up.railway.app',
         changeOrigin: true,
       },
     },
